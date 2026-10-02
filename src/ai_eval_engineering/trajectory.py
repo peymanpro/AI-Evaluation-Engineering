@@ -58,12 +58,12 @@ class Trajectory:
 
     @property
     def tool_names(self) -> tuple[str, ...]:
-        names = [
+        return tuple(
             event.name
             for event in self.events
-            if event.kind in {"action", "tool_result"} and event.payload.get("tool_name")
-        ]
-        return tuple(names)
+            if event.kind in {"action", "tool_result"}
+            and event.payload.get("tool_name")
+        )
 
     def replay(self) -> tuple[JsonObject, ...]:
         self.validate()
@@ -82,15 +82,20 @@ class Trajectory:
     def from_system_output(cls, output: SystemOutput) -> Trajectory:
         events: list[TrajectoryEvent] = []
         for index, raw in enumerate(output.trace, start=1):
-            kind = raw.get("kind", "action")
-            if kind not in {
+            raw_kind = raw.get("kind", "action")
+            if raw.get("tool_name") == "finish" and raw_kind == "action":
+                kind: TrajectoryKind = "termination"
+            elif raw_kind in {
                 "action",
                 "observation",
                 "state_transition",
                 "tool_result",
                 "termination",
             }:
-                raise ValueError(f"Unsupported trajectory kind: {kind!r}")
+                kind = raw_kind
+            else:
+                raise ValueError(f"Unsupported trajectory kind: {raw_kind!r}")
+
             name = str(raw.get("name") or raw.get("tool_name") or kind)
             payload: JsonObject = dict(raw)
             events.append(
