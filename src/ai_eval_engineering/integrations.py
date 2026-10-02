@@ -1,17 +1,13 @@
-"""Provider-neutral repository integration adapters.
-
-The adapters intentionally consume a small contract from each sibling project.
-This keeps the evaluation core independent while making the integration boundary
-explicit and testable.
-"""
+"""Provider-neutral repository integration adapters."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Any
 
 from .domain import EvaluationCase, EvaluationSuite, JsonObject, SystemOutput
-from .runner import EvaluationRunner, build_run_metadata
 from .graders import ExactMatchGrader, TrajectoryGrader
+from .runner import EvaluationRunner, build_run_metadata
 
 
 @dataclass(frozen=True)
