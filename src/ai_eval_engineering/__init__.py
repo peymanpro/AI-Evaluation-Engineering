@@ -12,7 +12,13 @@ from .domain import (
     SystemOutput,
 )
 from .runner import EvaluationRunner, SystemAdapter
+from .evidence import write_evidence_package
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
+from .tradeoffs import (
+    TradeoffObservation,
+    quality_cost_frontier,
+    quality_latency_frontier,
+)
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
@@ -30,8 +36,12 @@ __all__ = [
     "RunMetadata",
     "SystemAdapter",
     "SystemOutput",
+    "TradeoffObservation",
     "Trajectory",
     "TrajectoryEvent",
     "evaluate_agent",
     "summarize_adversarial_cases",
+    "quality_cost_frontier",
+    "quality_latency_frontier",
+    "write_evidence_package",
 ]

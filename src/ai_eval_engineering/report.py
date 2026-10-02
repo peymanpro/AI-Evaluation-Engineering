@@ -11,6 +11,22 @@ from .regression import GateResult
 from .statistics import ConfidenceInterval, PairedComparison, VarianceReport
 
 
+def _failure_taxonomy(cases: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for case in cases:
+        case_data = case.get("case", {})
+        metadata = case_data.get("metadata", {})
+        category = (
+            case_data.get("risk_category")
+            or metadata.get("failure_category")
+            or "uncategorized"
+        )
+        for grader in case.get("graders", []):
+            if not grader.get("passed", False):
+                counts[category] = counts.get(category, 0) + 1
+    return dict(sorted(counts.items()))
+
+
 def build_report(
     run: EvaluationRun,
     aggregate: AggregatedResult,
@@ -62,6 +78,12 @@ def render_markdown(report: dict[str, Any]) -> str:
             ),
             "",
         ])
+    taxonomy = report.get("failure_taxonomy", {})
+    if taxonomy:
+        lines.extend(["## Failure Taxonomy", ""])
+        lines.extend(f"- {category}: {count}" for category, count in taxonomy.items())
+        lines.append("")
+
     gate = report.get("gate")
     if gate:
         lines.extend(["## Release Gate", "", str(gate.get("summary", gate)), ""])
