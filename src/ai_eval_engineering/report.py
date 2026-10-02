@@ -35,6 +35,7 @@ def build_report(
     paired: PairedComparison | None = None,
     variance: VarianceReport | None = None,
 ) -> dict[str, Any]:
+    cases = [_to_dict(result) for result in run.cases]
     return {
         "manifest": _to_dict(run.manifest),
         "summary": _to_dict(aggregate),
@@ -42,7 +43,8 @@ def build_report(
         "gate": _to_dict(gate),
         "paired_comparison": _to_dict(paired),
         "variance": _to_dict(variance),
-        "cases": [_to_dict(result) for result in run.cases],
+        "failure_taxonomy": _failure_taxonomy(cases),
+        "cases": cases,
     }
 
 
