@@ -12,6 +12,7 @@ from .domain import (
     SystemOutput,
 )
 from .evidence import write_evidence_package
+from .online import Exposure, OnlineMetricContract, OnlineObservation, Outcome, build_metric_contract
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -40,8 +41,12 @@ __all__ = [
     "EvaluationRun",
     "EvaluationRunner",
     "EvaluationSuite",
+    "Exposure",
     "GraderResult",
     "IntegrationSpec",
+    "OnlineMetricContract",
+    "OnlineObservation",
+    "Outcome",
     "RunMetadata",
     "SystemAdapter",
     "SystemOutput",
@@ -50,6 +55,7 @@ __all__ = [
     "TrajectoryEvent",
     "building_software_adapter",
     "building_software_suite",
+    "build_metric_contract",
     "evaluate_agent",
     "evidence_rag_adapter",
     "evidence_rag_suite",
