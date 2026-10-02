@@ -11,14 +11,21 @@ from .domain import (
     RunMetadata,
     SystemOutput,
 )
-from .runner import EvaluationRunner, SystemAdapter
 from .evidence import write_evidence_package
-from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
-from .tradeoffs import (
-    TradeoffObservation,
-    quality_cost_frontier,
-    quality_latency_frontier,
+from .integrations import (
+    ContractAdapter,
+    IntegrationSpec,
+    building_software_adapter,
+    building_software_suite,
+    evidence_rag_adapter,
+    evidence_rag_suite,
+    how_agents_adapter,
+    how_agents_suite,
+    run_contract_demo,
 )
+from .runner import EvaluationRunner, SystemAdapter
+from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
+from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_latency_frontier
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
@@ -28,20 +35,29 @@ __all__ = [
     "AgentSuccessCriteria",
     "AggregatedResult",
     "CaseResult",
+    "ContractAdapter",
     "EvaluationCase",
     "EvaluationRun",
     "EvaluationRunner",
     "EvaluationSuite",
     "GraderResult",
+    "IntegrationSpec",
     "RunMetadata",
     "SystemAdapter",
     "SystemOutput",
     "TradeoffObservation",
     "Trajectory",
     "TrajectoryEvent",
+    "building_software_adapter",
+    "building_software_suite",
     "evaluate_agent",
-    "summarize_adversarial_cases",
+    "evidence_rag_adapter",
+    "evidence_rag_suite",
+    "how_agents_adapter",
+    "how_agents_suite",
     "quality_cost_frontier",
     "quality_latency_frontier",
+    "run_contract_demo",
+    "summarize_adversarial_cases",
     "write_evidence_package",
 ]
