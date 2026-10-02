@@ -24,7 +24,7 @@ def load_suite(path: str | Path) -> EvaluationSuite:
     seen_ids: set[str] = set()
     for raw in cases:
         if not isinstance(raw, dict):
-            raise ValueError("Each evaluation case must be an object.")
+            raise TypeError("Each evaluation case must be an object.")
         case_id = raw.get("id")
         case_input = raw.get("input")
         if not isinstance(case_id, str) or not case_id:
