@@ -1,5 +1,6 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
+from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .domain import (
     AggregatedResult,
     CaseResult,
@@ -11,10 +12,12 @@ from .domain import (
     SystemOutput,
 )
 from .runner import EvaluationRunner, SystemAdapter
+from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .trajectory import Trajectory, TrajectoryEvent
-from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 
 __all__ = [
+    "AdversarialCase",
+    "AdversarialCategory",
     "AgentEvaluationResult",
     "AgentSuccessCriteria",
     "AggregatedResult",
@@ -30,4 +33,5 @@ __all__ = [
     "Trajectory",
     "TrajectoryEvent",
     "evaluate_agent",
+    "summarize_adversarial_cases",
 ]
