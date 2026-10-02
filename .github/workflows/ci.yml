@@ -21,5 +21,11 @@ jobs:
         run: ruff check .
       - name: Mypy
         run: mypy src
-      - name: Demo
+      - name: Core demo
         run: ai-eval-demo
+      - name: Security regression demo
+        run: python examples/security_regression.py
+      - name: Trade-off demo
+        run: python examples/tradeoffs.py
+      - name: Integration contract demo
+        run: python examples/integrations.py

@@ -12,10 +12,30 @@ A judge model is an evaluator, not ground truth. The repository exposes a provid
 
 Case-level observations are preserved before aggregation. Bootstrap confidence intervals quantify uncertainty around selected metrics. Paired comparison requires identical population size and reports mean difference plus a standardized effect.
 
+## Agent evaluation
+
+Agent traces are normalized into typed events. Task success, step success, safety, and efficiency are reported separately so a successful task does not hide unsafe or inefficient behavior.
+
+## Adversarial evaluation
+
+Security cases carry explicit risk categories and are treated as regression-test inputs. The committed taxonomy is intentionally small and does not claim comprehensive coverage.
+
+## Trade-off analysis
+
+Quality/cost and quality/latency views expose non-dominated variants. The reporting layer does not choose a single preferred system.
+
+## Integration methodology
+
+Sibling repositories are adapted through provider-neutral contracts. CI uses deterministic contract snapshots so the evaluation framework remains reproducible and independent of external network or service availability.
+
+## Reporting and evidence
+
+Reports preserve manifest, case-level observations, summary metrics, uncertainty, regression results, and failure taxonomy. Evidence packages materialize these inputs in an auditable directory.
+
 ## Regression gates
 
 A baseline is explicit: suite version, system version, and metric values. Release rules define the maximum acceptable drop. The gate fails when the candidate crosses that threshold.
 
-## Scope
+## Evidence boundary
 
-V1.0 is a reusable evaluation core with deterministic fixtures. Real cloud-model integration, online experimentation, adversarial benchmark expansion, and production analytics adapters remain future phases.
+A deterministic fixture proves framework mechanics, not production AI quality. Production claims require a real system, a documented evaluation population, reproducible configuration, and observed results.

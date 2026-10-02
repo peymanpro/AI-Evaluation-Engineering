@@ -4,16 +4,20 @@ A provider-neutral evaluation layer for systematically measuring, comparing, and
 
 This repository treats evaluation as an engineering discipline rather than a final metric-reporting step.
 
-## What V1.0 demonstrates
+## What V1.1 demonstrates
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - reusable evaluation runners with provider-neutral system adapters;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
+- typed agent trajectory replay and separate task/step success analysis;
+- an adversarial taxonomy and executable security-regression cases;
 - a model-judge boundary with rubric representation and human calibration;
 - bootstrap confidence intervals, paired comparison, effect-size reporting, and run-to-run variance analysis;
 - explicit baselines and deterministic regression gates;
-- machine-readable and human-readable evidence reports;
-- CI quality gates with tests, Ruff, mypy, and a reproducible demo.
+- quality/cost and quality/latency trade-off frontiers;
+- machine-readable, human-readable, and auditable evidence packages;
+- integration adapters for three existing portfolio projects;
+- CI quality gates with tests, Ruff, mypy, and reproducible demonstrations.
 
 ## Architecture
 
@@ -25,13 +29,13 @@ This repository treats evaluation as an engineering discipline rather than a fin
             ↓
           Graders
        ↙     ↓      ↘
-    rules  schema  trajectory / judge boundary
+    rules  schema  trajectory / judge
             ↓
     Statistical Analysis
             ↓
       Regression Gate
             ↓
-       Evidence Report
+      Evidence Package
 
 The framework preserves raw case-level observations so aggregate claims can be inspected and reproduced.
 
@@ -40,16 +44,39 @@ The framework preserves raw case-level observations so aggregate claims can be i
     pip install -e ".[dev]"
     pytest
     ai-eval-demo
+    python examples/security_regression.py
+    python examples/tradeoffs.py
+    python examples/integrations.py
 
-The demo writes artifacts/demo-report.json and artifacts/demo-report.md.
+Generated `artifacts/` output is ignored by Git.
 
-## Verification
+## Agent and security evaluation
 
-CI runs pytest, Ruff, mypy, and the deterministic evaluation demo for the V1 core.
+V1.1 adds a typed trajectory schema with replay validation and separate task-success, step-success, safety, and efficiency signals.
+
+The committed `data/adversarial.json` suite is intentionally compact and human-readable. It demonstrates how risk-tagged cases become executable regression tests.
+
+The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
+
+## Trade-off analysis
+
+Evaluation runs already carry cost and latency at the `SystemOutput` level. `TradeoffObservation` exposes non-dominated quality/cost and quality/latency views.
+
+The framework reports trade-offs rather than automatically selecting a single preferred system.
+
+## Integration boundary
+
+The repository includes provider-neutral adapters for:
+
+- `peymanpro/Building-Software-With-LLMs`;
+- `peymanpro/Evidence-Grounded-RAG`;
+- `peymanpro/HowAgentsWork`.
+
+The CI demonstrations use deterministic contract snapshots derived from documented behavior. This keeps the core package network-independent and reproducible. The adapters can later be replaced with live-process adapters when a real runtime is available.
 
 ## Evidence policy
 
-This repository does not treat a small synthetic or deterministic benchmark as a production quality claim.
+This repository does not treat a small synthetic, deterministic, or contract-snapshot benchmark as a production quality claim.
 
 Every reported evaluation should identify:
 
@@ -62,8 +89,8 @@ Every reported evaluation should identify:
 - uncertainty where applicable;
 - known limitations.
 
-## V1.0 boundary
+## V1.1 boundary
 
-The implemented core intentionally stops before online experimentation, adversarial benchmark expansion, cloud-provider integration, and production analytics. Those are planned extensions rather than implied capabilities.
+The completed portfolio scope intentionally stops before online experimentation, cloud-provider integration, and production analytics adapters.
 
-See docs/architecture.md and docs/methodology.md for the design and evaluation method.
+See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `docs/V1.1-CLOSURE.md`.
