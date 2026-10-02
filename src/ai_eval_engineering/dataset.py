@@ -18,7 +18,7 @@ def load_suite(path: str | Path) -> EvaluationSuite:
     if not isinstance(version, str) or not version:
         raise ValueError("Dataset version must be a non-empty string.")
     if not isinstance(cases, list):
-        raise ValueError("Dataset cases must be a list.")
+        raise TypeError("Dataset cases must be a list.")
 
     parsed: list[EvaluationCase] = []
     seen_ids: set[str] = set()
