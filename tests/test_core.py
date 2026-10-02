@@ -1,4 +1,8 @@
-from ai_eval_engineering.domain import AggregatedResult, EvaluationCase, EvaluationSuite, SystemOutput
+from ai_eval_engineering.domain import (
+    AggregatedResult,
+    EvaluationCase,
+    EvaluationSuite,
+    SystemOutput,
 from ai_eval_engineering.graders import ExactMatchGrader, Rule, RuleBasedGrader, SchemaGrader
 from ai_eval_engineering.runner import EvaluationRunner, build_run_metadata
 
@@ -35,6 +39,8 @@ def test_rule_and_schema_graders() -> None:
     schema = SchemaGrader(
         {"type": "object", "required": ["answer"], "properties": {"answer": {"type": "string"}}}
     )
-    rules = RuleBasedGrader([Rule("nonempty", lambda _, o: bool(o.output["answer"]), "answer empty")])
+    rules = RuleBasedGrader(
+        [Rule("nonempty", lambda _, o: bool(o.output["answer"]), "answer empty")]
+    )
     assert schema.grade(case, output).passed
     assert rules.grade(case, output).passed

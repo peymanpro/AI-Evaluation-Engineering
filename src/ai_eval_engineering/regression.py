@@ -55,5 +55,9 @@ def evaluate_gate(
         baseline_value = baseline.metrics[rule.metric]
         current_value = current_metrics[rule.metric]
         if current_value < baseline_value - rule.max_allowed_drop:
-            failures.append(GateFailure(rule.metric, baseline_value, current_value, rule.max_allowed_drop))
+            failures.append(
+                GateFailure(
+                    rule.metric, baseline_value, current_value, rule.max_allowed_drop
+                )
+            )
     return GateResult(passed=not failures, failures=tuple(failures))

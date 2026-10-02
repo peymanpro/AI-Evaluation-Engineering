@@ -43,6 +43,10 @@ The framework preserves raw case-level observations so aggregate claims can be i
 
 The demo writes artifacts/demo-report.json and artifacts/demo-report.md.
 
+## Verification
+
+CI runs pytest, Ruff, mypy, and the deterministic evaluation demo for the V1 core.
+
 ## Evidence policy
 
 This repository does not treat a small synthetic or deterministic benchmark as a production quality claim.
