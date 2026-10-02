@@ -11,8 +11,12 @@ from .domain import (
     SystemOutput,
 )
 from .runner import EvaluationRunner, SystemAdapter
+from .trajectory import Trajectory, TrajectoryEvent
+from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 
 __all__ = [
+    "AgentEvaluationResult",
+    "AgentSuccessCriteria",
     "AggregatedResult",
     "CaseResult",
     "EvaluationCase",
@@ -23,4 +27,7 @@ __all__ = [
     "RunMetadata",
     "SystemAdapter",
     "SystemOutput",
+    "Trajectory",
+    "TrajectoryEvent",
+    "evaluate_agent",
 ]
