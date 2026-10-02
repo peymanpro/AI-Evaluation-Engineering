@@ -38,7 +38,7 @@ def load_suite(path: str | Path) -> EvaluationSuite:
             raise ValueError(f"Case {case_id} tags must be strings.")
         metadata = raw.get("metadata", {})
         if not isinstance(metadata, dict):
-            raise ValueError(f"Case {case_id} metadata must be an object.")
+            raise TypeError(f"Case {case_id} metadata must be an object.")
         seen_ids.add(case_id)
         parsed.append(
             EvaluationCase(
