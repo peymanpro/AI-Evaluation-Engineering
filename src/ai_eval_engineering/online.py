@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from .statistics import ConfidenceInterval, bootstrap_difference_ci
+
 OnlineValue = int | float
 EvidenceState = Literal["sufficient", "insufficient"]
 
@@ -55,6 +57,89 @@ class OnlineObservation:
             raise ValueError("Exposure and outcome must belong to the same experiment.")
         if self.exposure.exposure_id != self.outcome.exposure_id:
             raise ValueError("Exposure and outcome must share an exposure id.")
+
+
+@dataclass(frozen=True)
+class VariantMetrics:
+    variant: str
+    metric: str
+    values: tuple[OnlineValue, ...]
+    
+    @property
+    def sample_size(self) -> int:
+        return len(self.values)
+
+    @property
+    def mean(self) -> float:
+        if not self.values:
+            raise ValueError("Variant requires at least one outcome.")
+        return sum(self.values) / len(self.values)
+
+
+@dataclass(frozen=True)
+class OnlineVariantComparison:
+    metric: str
+    baseline_variant: str
+    candidate_variant: str
+    baseline_sample_size: int
+    candidate_sample_size: int
+    baseline_mean: float
+    candidate_mean: float
+    mean_difference: float
+    confidence_interval: ConfidenceInterval
+
+
+class ABResultAdapter:
+    """Aggregate online outcomes by experiment variant without vendor coupling."""
+
+    def __init__(self, observations: list[OnlineObservation]) -> None:
+        self.observations = tuple(observations)
+
+    def variant_metrics(self, metric: str) -> dict[str, VariantMetrics]:
+        grouped: dict[str, list[OnlineValue]] = {}
+        for observation in self.observations:
+            if observation.outcome.metric != metric:
+                continue
+            grouped.setdefault(observation.exposure.variant, []).append(
+                observation.outcome.value
+            )
+        return {
+            variant: VariantMetrics(variant, metric, tuple(values))
+            for variant, values in sorted(grouped.items())
+        }
+
+    def compare(
+        self,
+        metric: str,
+        baseline_variant: str,
+        candidate_variant: str,
+        confidence: float = 0.95,
+        resamples: int = 2000,
+        seed: int = 0,
+    ) -> OnlineVariantComparison:
+        variants = self.variant_metrics(metric)
+        if baseline_variant not in variants or candidate_variant not in variants:
+            raise ValueError("Both requested variants must have outcome observations.")
+        baseline = variants[baseline_variant]
+        candidate = variants[candidate_variant]
+        ci = bootstrap_difference_ci(
+            list(baseline.values),
+            list(candidate.values),
+            confidence=confidence,
+            resamples=resamples,
+            seed=seed,
+        )
+        return OnlineVariantComparison(
+            metric=metric,
+            baseline_variant=baseline_variant,
+            candidate_variant=candidate_variant,
+            baseline_sample_size=baseline.sample_size,
+            candidate_sample_size=candidate.sample_size,
+            baseline_mean=baseline.mean,
+            candidate_mean=candidate.mean,
+            mean_difference=ci.estimate,
+            confidence_interval=ci,
+        )
 
 
 @dataclass(frozen=True)

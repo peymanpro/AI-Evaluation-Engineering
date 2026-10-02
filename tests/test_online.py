@@ -5,6 +5,7 @@ from ai_eval_engineering.online import (
     Outcome,
     OnlineObservation,
     build_metric_contract,
+    ABResultAdapter,
 )
 
 
@@ -22,6 +23,33 @@ def test_mismatched_experiment_is_rejected() -> None:
             Exposure("exp-1", "u-1", "control", "all"),
             Outcome("exp-2", "u-1", "conversion", 1.0),
         )
+
+
+def test_ab_adapter_compares_variants_with_independent_bootstrap() -> None:
+    observations = [
+        OnlineObservation(
+            Exposure("exp-1", "u-1", "control", "all"),
+            Outcome("exp-1", "u-1", "conversion", 0.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-2", "control", "all"),
+            Outcome("exp-1", "u-2", "conversion", 1.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-3", "treatment", "all"),
+            Outcome("exp-1", "u-3", "conversion", 1.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-4", "treatment", "all"),
+            Outcome("exp-1", "u-4", "conversion", 1.0),
+        ),
+    ]
+    comparison = ABResultAdapter(observations).compare(
+        "conversion", "control", "treatment", resamples=500, seed=7
+    )
+    assert comparison.baseline_sample_size == 2
+    assert comparison.candidate_sample_size == 2
+    assert comparison.mean_difference == 0.5
 
 
 def test_metric_contract_requires_one_experiment() -> None:

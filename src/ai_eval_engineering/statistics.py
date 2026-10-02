@@ -85,6 +85,36 @@ def paired_compare(baseline: list[float], candidate: list[float]) -> PairedCompa
     )
 
 
+def bootstrap_difference_ci(
+    baseline: list[float],
+    candidate: list[float],
+    confidence: float = 0.95,
+    resamples: int = 2000,
+    seed: int = 0,
+) -> ConfidenceInterval:
+    if not baseline or not candidate:
+        raise ValueError("Both populations require at least one value.")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1.")
+    if resamples < 100:
+        raise ValueError("resamples must be at least 100.")
+    rng = random.Random(seed)
+    differences = [
+        statistics.fmean(rng.choices(candidate, k=len(candidate)))
+        - statistics.fmean(rng.choices(baseline, k=len(baseline)))
+        for _ in range(resamples)
+    ]
+    differences.sort()
+    alpha = (1.0 - confidence) / 2.0
+    return ConfidenceInterval(
+        estimate=statistics.fmean(candidate) - statistics.fmean(baseline),
+        lower=_quantile(differences, alpha),
+        upper=_quantile(differences, 1.0 - alpha),
+        confidence=confidence,
+        resamples=resamples,
+    )
+
+
 def variance_report(values: list[float]) -> VarianceReport:
     if not values:
         raise ValueError("At least one value is required.")
