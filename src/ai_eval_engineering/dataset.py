@@ -32,7 +32,7 @@ def load_suite(path: str | Path) -> EvaluationSuite:
         if case_id in seen_ids:
             raise ValueError(f"Duplicate case id: {case_id}")
         if not isinstance(case_input, dict):
-            raise ValueError(f"Case {case_id} input must be an object.")
+            raise TypeError(f"Case {case_id} input must be an object.")
         tags = raw.get("tags", [])
         if not isinstance(tags, list) or not all(isinstance(item, str) for item in tags):
             raise ValueError(f"Case {case_id} tags must be strings.")
