@@ -13,14 +13,6 @@ from .domain import (
 )
 from .evidence import write_evidence_package
 from .evidence_guardrails import EvidenceAssessment, EvidenceIssue, assess_online_evidence
-from .online import (
-    ABResultAdapter,
-    Exposure,
-    OnlineMetricContract,
-    OnlineObservation,
-    Outcome,
-    build_metric_contract,
-)
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -31,6 +23,14 @@ from .integrations import (
     how_agents_adapter,
     how_agents_suite,
     run_contract_demo,
+)
+from .online import (
+    ABResultAdapter,
+    Exposure,
+    OnlineMetricContract,
+    OnlineObservation,
+    Outcome,
+    build_metric_contract,
 )
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
@@ -47,11 +47,11 @@ __all__ = [
     "CaseResult",
     "ContractAdapter",
     "EvaluationCase",
-    "EvidenceAssessment",
-    "EvidenceIssue",
     "EvaluationRun",
     "EvaluationRunner",
     "EvaluationSuite",
+    "EvidenceAssessment",
+    "EvidenceIssue",
     "Exposure",
     "GraderResult",
     "IntegrationSpec",
@@ -64,10 +64,10 @@ __all__ = [
     "TradeoffObservation",
     "Trajectory",
     "TrajectoryEvent",
-    "building_software_adapter",
-    "building_software_suite",
     "assess_online_evidence",
     "build_metric_contract",
+    "building_software_adapter",
+    "building_software_suite",
     "evaluate_agent",
     "evidence_rag_adapter",
     "evidence_rag_suite",

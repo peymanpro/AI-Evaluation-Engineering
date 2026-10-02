@@ -1,11 +1,11 @@
 import pytest
 
 from ai_eval_engineering.online import (
-    Exposure,
-    Outcome,
-    OnlineObservation,
-    build_metric_contract,
     ABResultAdapter,
+    Exposure,
+    OnlineObservation,
+    Outcome,
+    build_metric_contract,
 )
 
 
