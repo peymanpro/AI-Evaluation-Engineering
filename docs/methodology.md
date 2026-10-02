@@ -20,6 +20,12 @@ Agent traces are normalized into typed events. Task success, step success, safet
 
 Security cases carry explicit risk categories and are treated as regression-test inputs. The committed taxonomy is intentionally small and does not claim comprehensive coverage.
 
+## Online evaluation
+
+Online observations are separated into exposure and outcome records linked by experiment and exposure identifiers. A/B comparisons use independent bootstrap resampling because independently assigned variants are not paired observations. Segment analysis reuses the same comparison primitive per segment.
+
+Evidence guardrails can flag small samples, overlapping population assignments, missing outcomes, missing ground truth, and selection bias. An insufficient assessment is surfaced explicitly rather than converted into a confident conclusion.
+
 ## Trade-off analysis
 
 Quality/cost and quality/latency views expose non-dominated variants. The reporting layer does not choose a single preferred system.

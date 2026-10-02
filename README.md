@@ -58,6 +58,12 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Online evaluation
+
+The online layer keeps exposure, outcome, variant, and segment identifiers separate. It provides a vendor-neutral A/B adapter, segment-level comparisons, and evidence guardrails that surface insufficient evidence instead of forcing a conclusion.
+
+Run the deterministic example with `python examples/online_experiment.py`.
+
 ## Trade-off analysis
 
 Evaluation runs already carry cost and latency at the `SystemOutput` level. `TradeoffObservation` exposes non-dominated quality/cost and quality/latency views.

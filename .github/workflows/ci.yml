@@ -23,6 +23,8 @@ jobs:
         run: mypy src
       - name: Core demo
         run: ai-eval-demo
+      - name: Online evaluation demo
+        run: python examples/online_experiment.py
       - name: Security regression demo
         run: python examples/security_regression.py
       - name: Trade-off demo
