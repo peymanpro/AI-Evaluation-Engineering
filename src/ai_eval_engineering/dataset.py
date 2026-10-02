@@ -12,19 +12,19 @@ from .domain import EvaluationCase, EvaluationSuite
 def load_suite(path: str | Path) -> EvaluationSuite:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("Dataset root must be an object.")
+        raise TypeError("Dataset root must be an object.")
     version = payload.get("version")
     cases = payload.get("cases")
     if not isinstance(version, str) or not version:
         raise ValueError("Dataset version must be a non-empty string.")
     if not isinstance(cases, list):
-        raise ValueError("Dataset cases must be a list.")
+        raise TypeError("Dataset cases must be a list.")
 
     parsed: list[EvaluationCase] = []
     seen_ids: set[str] = set()
     for raw in cases:
         if not isinstance(raw, dict):
-            raise ValueError("Each evaluation case must be an object.")
+            raise TypeError("Each evaluation case must be an object.")
         case_id = raw.get("id")
         case_input = raw.get("input")
         if not isinstance(case_id, str) or not case_id:
@@ -32,13 +32,13 @@ def load_suite(path: str | Path) -> EvaluationSuite:
         if case_id in seen_ids:
             raise ValueError(f"Duplicate case id: {case_id}")
         if not isinstance(case_input, dict):
-            raise ValueError(f"Case {case_id} input must be an object.")
+            raise TypeError(f"Case {case_id} input must be an object.")
         tags = raw.get("tags", [])
         if not isinstance(tags, list) or not all(isinstance(item, str) for item in tags):
             raise ValueError(f"Case {case_id} tags must be strings.")
         metadata = raw.get("metadata", {})
         if not isinstance(metadata, dict):
-            raise ValueError(f"Case {case_id} metadata must be an object.")
+            raise TypeError(f"Case {case_id} metadata must be an object.")
         seen_ids.add(case_id)
         parsed.append(
             EvaluationCase(

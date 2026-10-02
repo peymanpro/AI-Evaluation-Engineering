@@ -7,8 +7,8 @@ from pathlib import Path
 
 from .domain import AggregatedResult, EvaluationCase, EvaluationSuite, SystemOutput
 from .graders import ExactMatchGrader
-from .report import build_report, write_json_report, write_markdown_report
 from .regression import BaselineRecord, RegressionRule, evaluate_gate
+from .report import build_report, write_json_report, write_markdown_report
 from .runner import EvaluationRunner, build_run_metadata
 from .statistics import bootstrap_mean_ci
 

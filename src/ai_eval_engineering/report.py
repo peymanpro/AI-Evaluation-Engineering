@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -57,8 +56,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines.extend([
             "## Uncertainty",
             "",
-            f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
-            f"({ci['confidence']:.0%}, {ci['resamples']} resamples).",
+            (
+                f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
+                f"({ci['confidence']:.0%}, {ci['resamples']} resamples)."
+            ),
             "",
         ])
     gate = report.get("gate")
@@ -67,8 +68,10 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend([
         "## Limitations",
         "",
-        "This report is evidence for the evaluated suite only; it is not a "
-        "production-wide quality claim.",
+        (
+            "This report is evidence for the evaluated suite only; it is not a "
+            "production-wide quality claim."
+        ),
         "",
     ])
     return "\n".join(lines)
@@ -81,8 +84,8 @@ def write_markdown_report(report: dict[str, Any], path: str | Path) -> None:
 def _to_dict(value: Any) -> Any:
     if value is None:
         return None
-    if is_dataclass(value):
-        result = {key: _to_dict(item) for key, item in asdict(value).items()}
+    if hasattr(value, "__dataclass_fields__"):
+        result = {key: _to_dict(item) for key, item in vars(value).items()}
         if isinstance(value, GateResult):
             result["summary"] = value.summary()
         return result

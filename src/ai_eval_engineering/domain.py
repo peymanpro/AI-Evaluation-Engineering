@@ -76,7 +76,7 @@ class AggregatedResult:
     scores: tuple[float, ...]
 
     @classmethod
-    def from_case_results(cls, results: list[CaseResult]) -> "AggregatedResult":
+    def from_case_results(cls, results: list[CaseResult]) -> AggregatedResult:
         scores = tuple(
             sum(grader.score for grader in result.graders) / len(result.graders)
             if result.graders
