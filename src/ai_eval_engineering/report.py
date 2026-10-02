@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -85,8 +84,8 @@ def write_markdown_report(report: dict[str, Any], path: str | Path) -> None:
 def _to_dict(value: Any) -> Any:
     if value is None:
         return None
-    if is_dataclass(value):
-        result = {key: _to_dict(item) for key, item in asdict(value).items()}
+    if hasattr(value, "__dataclass_fields__"):
+        result = {key: _to_dict(item) for key, item in vars(value).items()}
         if isinstance(value, GateResult):
             result["summary"] = value.summary()
         return result
