@@ -69,8 +69,10 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend([
         "## Limitations",
         "",
-        "This report is evidence for the evaluated suite only; it is not a "
-        "production-wide quality claim.",
+        (
+            "This report is evidence for the evaluated suite only; it is not a "
+            "production-wide quality claim."
+        ),
         "",
     ])
     return "\n".join(lines)
