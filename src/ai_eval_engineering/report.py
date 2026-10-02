@@ -57,8 +57,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines.extend([
             "## Uncertainty",
             "",
-            f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
-            f"({ci['confidence']:.0%}, {ci['resamples']} resamples).",
+            (
+                f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
+                f"({ci['confidence']:.0%}, {ci['resamples']} resamples)."
+            ),
             "",
         ])
     gate = report.get("gate")
