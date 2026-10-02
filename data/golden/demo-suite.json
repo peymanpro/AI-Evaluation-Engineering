@@ -1,0 +1,19 @@
+{
+  "version": "demo-1",
+  "cases": [
+    {
+      "id": "capital-france",
+      "input": {"question": "What is the capital of France?", "answer": "Paris"},
+      "expected": "Paris",
+      "tags": ["factual", "golden"],
+      "risk_category": "low"
+    },
+    {
+      "id": "two-plus-two",
+      "input": {"question": "2 + 2?", "answer": "4"},
+      "expected": "4",
+      "tags": ["reasoning", "golden"],
+      "risk_category": "low"
+    }
+  ]
+}
