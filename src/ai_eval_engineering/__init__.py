@@ -12,6 +12,7 @@ from .domain import (
     SystemOutput,
 )
 from .evidence import write_evidence_package
+from .evidence_guardrails import EvidenceAssessment, EvidenceIssue, assess_online_evidence
 from .online import (
     ABResultAdapter,
     Exposure,
@@ -46,6 +47,8 @@ __all__ = [
     "CaseResult",
     "ContractAdapter",
     "EvaluationCase",
+    "EvidenceAssessment",
+    "EvidenceIssue",
     "EvaluationRun",
     "EvaluationRunner",
     "EvaluationSuite",
@@ -63,6 +66,7 @@ __all__ = [
     "TrajectoryEvent",
     "building_software_adapter",
     "building_software_suite",
+    "assess_online_evidence",
     "build_metric_contract",
     "evaluate_agent",
     "evidence_rag_adapter",
