@@ -1,5 +1,4 @@
 """Machine-readable and human-readable evaluation reports."""
-
 from __future__ import annotations
 
 import json
@@ -11,6 +10,22 @@ from .regression import GateResult
 from .statistics import ConfidenceInterval, PairedComparison, VarianceReport
 
 
+def _failure_taxonomy(cases: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for case in cases:
+        case_data = case.get("case", {})
+        metadata = case_data.get("metadata", {})
+        category = (
+            case_data.get("risk_category")
+            or metadata.get("failure_category")
+            or "uncategorized"
+        )
+        for grader in case.get("graders", []):
+            if not grader.get("passed", False):
+                counts[category] = counts.get(category, 0) + 1
+    return dict(sorted(counts.items()))
+
+
 def build_report(
     run: EvaluationRun,
     aggregate: AggregatedResult,
@@ -19,6 +34,7 @@ def build_report(
     paired: PairedComparison | None = None,
     variance: VarianceReport | None = None,
 ) -> dict[str, Any]:
+    cases = [_to_dict(result) for result in run.cases]
     return {
         "manifest": _to_dict(run.manifest),
         "summary": _to_dict(aggregate),
@@ -26,7 +42,8 @@ def build_report(
         "gate": _to_dict(gate),
         "paired_comparison": _to_dict(paired),
         "variance": _to_dict(variance),
-        "cases": [_to_dict(result) for result in run.cases],
+        "failure_taxonomy": _failure_taxonomy(cases),
+        "cases": cases,
     }
 
 
@@ -51,29 +68,40 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Mean score: {summary['mean_score']:.4f}",
         "",
     ]
+    taxonomy = report.get("failure_taxonomy", {})
+    if taxonomy:
+        lines.extend(["## Failure Taxonomy", ""])
+        for category, count in taxonomy.items():
+            lines.append(f"- {category}: {count}")
+        lines.append("")
+
     ci = report.get("confidence_interval")
     if ci:
-        lines.extend([
-            "## Uncertainty",
-            "",
-            (
-                f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
-                f"({ci['confidence']:.0%}, {ci['resamples']} resamples)."
-            ),
-            "",
-        ])
+        lines.extend(
+            [
+                "## Uncertainty",
+                "",
+                (
+                    f"Bootstrap mean CI: [{ci['lower']:.4f}, {ci['upper']:.4f}] "
+                    f"({ci['confidence']:.0%}, {ci['resamples']} resamples)."
+                ),
+                "",
+            ]
+        )
     gate = report.get("gate")
     if gate:
         lines.extend(["## Release Gate", "", str(gate.get("summary", gate)), ""])
-    lines.extend([
-        "## Limitations",
-        "",
-        (
-            "This report is evidence for the evaluated suite only; it is not a "
-            "production-wide quality claim."
-        ),
-        "",
-    ])
+    lines.extend(
+        [
+            "## Limitations",
+            "",
+            (
+                "This report is evidence for the evaluated suite only; it is not a "
+                "production-wide quality claim."
+            ),
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
