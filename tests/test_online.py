@@ -52,6 +52,32 @@ def test_ab_adapter_compares_variants_with_independent_bootstrap() -> None:
     assert comparison.mean_difference == 0.5
 
 
+def test_segment_comparisons_keep_segment_metrics_separate() -> None:
+    observations = [
+        OnlineObservation(
+            Exposure("exp-1", "u-1", "new", "mobile"),
+            Outcome("exp-1", "u-1", "conversion", 0.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-2", "new", "desktop"),
+            Outcome("exp-1", "u-2", "conversion", 0.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-3", "old", "mobile"),
+            Outcome("exp-1", "u-3", "conversion", 1.0),
+        ),
+        OnlineObservation(
+            Exposure("exp-1", "u-4", "old", "desktop"),
+            Outcome("exp-1", "u-4", "conversion", 1.0),
+        ),
+    ]
+    comparisons = ABResultAdapter(observations).segment_comparisons(
+        "conversion", "new", "old", resamples=500, seed=3
+    )
+    assert set(comparisons) == {"desktop", "mobile"}
+    assert comparisons["mobile"].mean_difference == 1.0
+
+
 def test_metric_contract_requires_one_experiment() -> None:
     exposures = [
         Exposure("exp-1", "u-1", "control", "all"),

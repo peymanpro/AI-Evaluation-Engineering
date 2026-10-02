@@ -12,7 +12,14 @@ from .domain import (
     SystemOutput,
 )
 from .evidence import write_evidence_package
-from .online import Exposure, OnlineMetricContract, OnlineObservation, Outcome, build_metric_contract
+from .online import (
+    ABResultAdapter,
+    Exposure,
+    OnlineMetricContract,
+    OnlineObservation,
+    Outcome,
+    build_metric_contract,
+)
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -30,6 +37,7 @@ from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_laten
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
+    "ABResultAdapter",
     "AdversarialCase",
     "AdversarialCategory",
     "AgentEvaluationResult",

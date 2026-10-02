@@ -141,6 +141,32 @@ class ABResultAdapter:
             confidence_interval=ci,
         )
 
+    def segment_comparisons(
+        self,
+        metric: str,
+        baseline_variant: str,
+        candidate_variant: str,
+        confidence: float = 0.95,
+        resamples: int = 2000,
+        seed: int = 0,
+    ) -> dict[str, OnlineVariantComparison]:
+        segments = sorted({item.exposure.segment for item in self.observations})
+        comparisons: dict[str, OnlineVariantComparison] = {}
+        for segment in segments:
+            segment_observations = [
+                item for item in self.observations if item.exposure.segment == segment
+            ]
+            adapter = ABResultAdapter(segment_observations)
+            comparisons[segment] = adapter.compare(
+                metric,
+                baseline_variant,
+                candidate_variant,
+                confidence=confidence,
+                resamples=resamples,
+                seed=seed,
+            )
+        return comparisons
+
 
 @dataclass(frozen=True)
 class OnlineMetricContract:
