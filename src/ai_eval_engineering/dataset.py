@@ -12,7 +12,7 @@ from .domain import EvaluationCase, EvaluationSuite
 def load_suite(path: str | Path) -> EvaluationSuite:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("Dataset root must be an object.")
+        raise TypeError("Dataset root must be an object.")
     version = payload.get("version")
     cases = payload.get("cases")
     if not isinstance(version, str) or not version:
