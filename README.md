@@ -78,8 +78,7 @@ The repository includes provider-neutral adapters for:
 - [Evidence-Grounded-RAG](https://github.com/peymanpro/Evidence-Grounded-RAG);
 - [How Agents Work](https://github.com/peymanpro/How-Agents-Work).
 
-The CI demonstrations use deterministic contract snapshots derived from documented behavior. This keeps the core package network-independent and reproducible. The adapters can later be replaced with live-process adapters when a real runtime is available.
-
+These are **contract-level integrations** built from deterministic snapshots of documented behavior, not claims of live-process or network integration. This keeps the evaluation package network-independent and reproducible while making interface expectations testable. The adapters can later be replaced with live-process adapters when a real runtime is available.
 ## Model adaptation and evaluation
 
 [Pretrained LLM Adaptation](https://github.com/peymanpro/Pretrained-LLM-Adaptation) is a complementary project focused on a reproducible LoRA/PEFT training and evaluation workflow. This repository focuses on reusable evaluation contracts, graders, statistical comparisons, and regression gates.
