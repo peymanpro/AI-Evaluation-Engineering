@@ -74,9 +74,9 @@ The framework reports trade-offs rather than automatically selecting a single pr
 
 The repository includes provider-neutral adapters for:
 
-- `peymanpro/Building-Software-With-LLMs`;
-- `peymanpro/Evidence-Grounded-RAG`;
-- `peymanpro/HowAgentsWork`.
+- [Building Software With LLMs](https://github.com/peymanpro/Building-Software-With-LLMs);
+- [Evidence-Grounded-RAG](https://github.com/peymanpro/Evidence-Grounded-RAG);
+- [How Agents Work](https://github.com/peymanpro/How-Agents-Work).
 
 The CI demonstrations use deterministic contract snapshots derived from documented behavior. This keeps the core package network-independent and reproducible. The adapters can later be replaced with live-process adapters when a real runtime is available.
 
