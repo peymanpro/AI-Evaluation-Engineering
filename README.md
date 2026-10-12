@@ -118,3 +118,9 @@ Every reported evaluation should identify:
 The completed portfolio scope intentionally stops before online experimentation, cloud-provider integration, and production analytics adapters.
 
 See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `docs/V1.1-CLOSURE.md`.
+
+## Automated releases
+
+The release workflow reads the version from `pyproject.toml`, runs the test suite, Ruff, mypy, and the project's core, online-evaluation, security-regression, trade-off, and integration-contract demonstrations. It then builds the Python distributions and attaches them to the GitHub Release with generated release notes.
+
+To publish the next version, increment `[project].version` in `pyproject.toml` and push to `main`, or push a matching `vMAJOR.MINOR.PATCH` tag. Existing version tags and releases are never overwritten.
