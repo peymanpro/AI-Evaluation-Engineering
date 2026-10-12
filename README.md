@@ -82,8 +82,23 @@ The CI demonstrations use deterministic contract snapshots derived from document
 
 ## Model adaptation and evaluation
 
-[Pretrained LLM Adaptation](https://github.com/peymanpro/Pretrained-LLM-Adaptation) is a complementary project focused on a reproducible LoRA/PEFT training and evaluation workflow. This repository focuses on reusable evaluation contracts, graders, statistical comparisons, and regression gates. They address different stages of the ML lifecycle and remain independently runnable; the evaluation framework does not automatically launch the adaptation benchmark.
+[Pretrained LLM Adaptation](https://github.com/peymanpro/Pretrained-LLM-Adaptation) is a complementary project focused on a reproducible LoRA/PEFT training and evaluation workflow. This repository focuses on reusable evaluation contracts, graders, statistical comparisons, and regression gates.
 
+The distinction matters:
+
+~~~text
+Pretrained model + dataset
+          ↓
+training / adaptation
+          ↓
+held-out metrics + predictions
+          ↓
+versioned evaluation cases and graders
+          ↓
+comparison / regression decision
+~~~
+
+The repositories are independently runnable. This evaluation framework does **not** automatically launch the adaptation benchmark, and a training-time score by itself is not a substitute for a separately versioned evaluation suite.
 ## Evidence policy
 
 This repository does not treat a small synthetic, deterministic, or contract-snapshot benchmark as a production quality claim.
