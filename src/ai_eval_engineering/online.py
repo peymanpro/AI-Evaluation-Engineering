@@ -96,7 +96,7 @@ class OnlineVariantComparison:
     baseline_mean: float
     candidate_mean: float
     mean_difference: float
-    confidence_interval: ConfidenceInterval
+    confidence_interval: ConfidenceInterval | None
 
 
 class ABResultAdapter:
@@ -132,13 +132,34 @@ class ABResultAdapter:
             raise ValueError("Both requested variants must have outcome observations.")
         baseline = variants[baseline_variant]
         candidate = variants[candidate_variant]
-        ci = bootstrap_difference_ci(
-            list(baseline.values),
-            list(candidate.values),
-            confidence=confidence,
-            resamples=resamples,
-            seed=seed,
-        )
+        if (
+            isinstance(confidence, bool)
+            or not isinstance(confidence, (int, float))
+            or not math.isfinite(float(confidence))
+            or not 0.0 < confidence < 1.0
+        ):
+            raise ValueError("confidence must be a finite number between 0 and 1.")
+        if (
+            isinstance(resamples, bool)
+            or not isinstance(resamples, int)
+            or resamples < 100
+        ):
+            raise ValueError("resamples must be an integer of at least 100.")
+
+        # A one-observation arm still has a descriptive mean, but there is no
+        # defensible bootstrap uncertainty estimate for that arm. Preserve the
+        # descriptive comparison and make the missing interval explicit.
+        if baseline.sample_size < 2 or candidate.sample_size < 2:
+            ci = None
+        else:
+            ci = bootstrap_difference_ci(
+                list(baseline.values),
+                list(candidate.values),
+                confidence=confidence,
+                resamples=resamples,
+                seed=seed,
+            )
+
         return OnlineVariantComparison(
             metric=metric,
             baseline_variant=baseline_variant,
@@ -147,7 +168,7 @@ class ABResultAdapter:
             candidate_sample_size=candidate.sample_size,
             baseline_mean=baseline.mean,
             candidate_mean=candidate.mean,
-            mean_difference=ci.estimate,
+            mean_difference=candidate.mean - baseline.mean,
             confidence_interval=ci,
         )
 
