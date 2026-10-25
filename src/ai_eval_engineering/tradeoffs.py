@@ -1,6 +1,7 @@
 """Quality/cost/latency observations and non-dominated trade-off views."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 
@@ -12,10 +13,23 @@ class TradeoffObservation:
     latency_ms: float
 
     def __post_init__(self) -> None:
-        if not self.variant.strip():
+        if not isinstance(self.variant, str) or not self.variant.strip():
             raise ValueError("variant must not be empty")
-        if self.quality < 0 or self.cost_usd < 0 or self.latency_ms < 0:
-            raise ValueError("quality, cost, and latency must be non-negative")
+        for name, value in (
+            ("quality", self.quality),
+            ("cost_usd", self.cost_usd),
+            ("latency_ms", self.latency_ms),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{name} must be a finite number")
+            try:
+                finite_value = float(value)
+            except OverflowError as exc:
+                raise ValueError(f"{name} must be a finite number") from exc
+            if not math.isfinite(finite_value):
+                raise ValueError(f"{name} must be a finite number")
+            if finite_value < 0:
+                raise ValueError(f"{name} must be non-negative")
 
 
 def quality_cost_frontier(
