@@ -17,6 +17,7 @@ EvidenceIssueCode = Literal[
     "duplicate_exposure",
     "duplicate_outcome",
     "unmatched_outcome",
+    "missing_exposure",
     "missing_outcome",
     "missing_ground_truth",
     "selection_bias",
@@ -80,6 +81,13 @@ def assess_online_evidence(
 
     issues: list[EvidenceIssue] = []
     exposure_by_id: dict[str, Exposure] = {}
+    if not exposures:
+        issues.append(
+            EvidenceIssue(
+                "missing_exposure",
+                "no exposure records were supplied for this experiment.",
+            )
+        )
     duplicate_exposure_ids: list[str] = []
     overlapping_ids: list[str] = []
 
