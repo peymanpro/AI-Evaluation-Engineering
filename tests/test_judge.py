@@ -45,7 +45,7 @@ def test_judge_calibration_records_disagreements() -> None:
     assert report.per_label_metrics["pass"].predicted_count == 1
     assert report.per_label_metrics["pass"].precision == pytest.approx(1.0)
     assert report.per_label_metrics["pass"].recall == pytest.approx(0.5)
-    assert report.per_label_metrics["fail"].precision == pytest.approx(1.0)
+    assert report.per_label_metrics["fail"].precision == pytest.approx(0.5)
 
 
 def test_balanced_accuracy_exposes_majority_class_collapse() -> None:
