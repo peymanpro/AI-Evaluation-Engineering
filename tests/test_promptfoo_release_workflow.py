@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ai_eval_engineering import (
+    EvaluationRun,
     ReleaseMetricPolicy,
     compare_failure_runs,
     evaluate_release_candidate,
@@ -17,7 +18,7 @@ SUITE_VERSION = "arithmetic-suite-v1"
 SYSTEM_NAME = "arithmetic-assistant"
 
 
-def load_pair() -> tuple[object, object]:
+def load_pair() -> tuple[EvaluationRun, EvaluationRun]:
     baseline = load_promptfoo_json(
         FIXTURES / "promptfoo-baseline-v3.json",
         system_name=SYSTEM_NAME,
@@ -41,8 +42,8 @@ def test_promptfoo_baseline_candidate_flow_reaches_release_gate_and_failure_delt
     baseline, candidate = load_pair()
 
     decision = evaluate_release_candidate(
-        baseline,  # type: ignore[arg-type]
-        candidate,  # type: ignore[arg-type]
+        baseline,
+        candidate,
         [
             ReleaseMetricPolicy(
                 "promptfoo",
@@ -56,8 +57,8 @@ def test_promptfoo_baseline_candidate_flow_reaches_release_gate_and_failure_delt
         seed=7,
     )
     delta = compare_failure_runs(
-        baseline,  # type: ignore[arg-type]
-        candidate,  # type: ignore[arg-type]
+        baseline,
+        candidate,
     )
 
     assert decision.status == "FAIL"
