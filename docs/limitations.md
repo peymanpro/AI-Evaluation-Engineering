@@ -21,3 +21,5 @@
 - Failure regression memory is a local JSONL artifact, not a secure vault. It omits observed model outputs by default, but case inputs, expected values, metadata, and grader details may contain sensitive data and must be reviewed or redacted before storage.
 - Failure-memory identity is tied to suite version, system name, case definition, and grader name. It does not version grader implementation or rubric semantics; bump the suite or other external versioning metadata when those semantics change.
 - Merged failure records should be processed in chronological run order so first/last-seen history remains meaningful.
+- Judge calibration metrics compare a judge with the supplied human labels; they do not verify that human labels are correct, that the sample represents deployment traffic, or that the judge is fair on unobserved populations. Report per-class metrics and sample counts, especially when label distributions are imbalanced.
+- Macro precision treats undefined per-label precision as zero for labels present in the human reference set. Cohen's kappa is omitted when its expected-agreement denominator is zero.

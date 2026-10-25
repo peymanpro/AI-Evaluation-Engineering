@@ -58,6 +58,49 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Judge calibration
+
+A judge that agrees with a majority class can still miss a minority class. `calibrate_judge`
+therefore reports per-label precision/recall/F1 in addition to raw agreement, balanced accuracy,
+macro metrics, a confusion matrix, and Cohen's kappa. Input maps must cover exactly the unique
+calibration case IDs; malformed or duplicate inputs fail explicitly rather than being silently
+ignored.
+
+```python
+from ai_eval_engineering import (
+    EvaluationRubric,
+    FakeJudge,
+    RubricDimension,
+    calibrate_judge,
+)
+
+cases = [case_a, case_b, case_c]
+outputs = {case.id: output_by_id[case.id] for case in cases}
+human_labels = {"case-a": "pass", "case-b": "fail", "case-c": "pass"}
+
+report = calibrate_judge(
+    cases,
+    FakeJudge({"case-a": ("pass", 0.9), "case-b": ("pass", 0.8), "case-c": ("pass", 0.95)}),
+    outputs,
+    human_labels,
+    EvaluationRubric(
+        "answer-quality",
+        (RubricDimension("correctness", "Matches the verified expected answer"),),
+    ),
+)
+
+print(report.agreement_rate)
+print(report.balanced_accuracy)
+print(report.per_label_metrics["fail"].recall)
+print(report.cohen_kappa)
+```
+
+Undefined precision is represented as `None` when a label is never predicted; macro precision
+treats that undefined value as zero for reference labels. Cohen's kappa is `None` when its
+expected-agreement denominator is zero. Calibration metrics measure agreement with the supplied
+human labels—they do not establish that those labels are correct or that a judge is fair on
+unobserved populations.
+
 ## Failure-to-regression memory
 
 A failed grader/case pair can be captured as a stable regression-memory record, merged across
