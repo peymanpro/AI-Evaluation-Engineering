@@ -59,3 +59,58 @@ def test_overlapping_population_is_rejected() -> None:
         min_sample_size=1,
     )
     assert "overlapping_population" in {issue.code for issue in assessment.issues}
+
+
+
+def test_duplicate_outcomes_do_not_inflate_sample_sizes() -> None:
+    exposures = [
+        Exposure("exp-1", "u-1", "control", "all"),
+        Exposure("exp-1", "u-2", "treatment", "all"),
+    ]
+    outcomes = [
+        Outcome("exp-1", "u-1", "conversion", 0.0),
+        Outcome("exp-1", "u-1", "conversion", 1.0),
+        Outcome("exp-1", "u-2", "conversion", 1.0),
+    ]
+
+    assessment = assess_online_evidence(
+        exposures, outcomes, "conversion", min_sample_size=2
+    )
+
+    assert assessment.sample_sizes == {"control": 1, "treatment": 1}
+    assert "duplicate_outcome" in {issue.code for issue in assessment.issues}
+    assert not assessment.sufficient
+
+
+def test_unmatched_outcome_is_reported() -> None:
+    exposures, outcomes = observations()
+    outcomes.append(Outcome("exp-1", "unknown-user", "conversion", 1.0))
+
+    assessment = assess_online_evidence(
+        exposures, outcomes, "conversion", min_sample_size=1
+    )
+
+    assert "unmatched_outcome" in {issue.code for issue in assessment.issues}
+    assert not assessment.sufficient
+
+
+def test_duplicate_exposure_records_are_reported() -> None:
+    exposures, outcomes = observations()
+    exposures.append(Exposure("exp-1", "u-1", "control", "all"))
+
+    assessment = assess_online_evidence(
+        exposures, outcomes, "conversion", min_sample_size=1
+    )
+
+    assert "duplicate_exposure" in {issue.code for issue in assessment.issues}
+    assert not assessment.sufficient
+
+
+def test_variant_with_no_outcomes_is_counted_as_zero() -> None:
+    exposures, outcomes = observations()
+    assessment = assess_online_evidence(
+        exposures, outcomes[:1], "conversion", min_sample_size=1
+    )
+
+    assert assessment.sample_sizes == {"control": 1, "treatment": 0}
+    assert "insufficient_sample" in {issue.code for issue in assessment.issues}
