@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+import ai_eval_engineering as public_api
 from ai_eval_engineering.domain import EvaluationRun
 from ai_eval_engineering.result_import import (
     EXTERNAL_RUN_SCHEMA_VERSION,
@@ -176,3 +177,22 @@ def test_missing_output_value_is_not_treated_as_null_output() -> None:
 
     with pytest.raises(ValueError, match="output field is required"):
         import_run_payload(data)
+
+
+
+def test_json_schema_documents_the_same_supported_version() -> None:
+    schema_path = Path(__file__).parents[1] / "schemas" / "external-run-v1.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    assert schema["$schema"].endswith("2020-12/schema")
+    assert schema["properties"]["schema_version"]["const"] == EXTERNAL_RUN_SCHEMA_VERSION
+    assert "manifest" in schema["required"]
+    assert "cases" in schema["required"]
+
+
+def test_interchange_functions_are_available_from_public_package() -> None:
+    assert public_api.import_run_payload is import_run_payload
+    assert public_api.export_run_payload is export_run_payload
+    assert public_api.load_run_json is load_run_json
+    assert public_api.write_run_json is write_run_json
+    assert public_api.EXTERNAL_RUN_SCHEMA_VERSION == EXTERNAL_RUN_SCHEMA_VERSION
