@@ -58,6 +58,46 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Direction-aware regression gates
+
+Release-gate rules can explicitly state whether a metric should increase or decrease. The default
+`higher_is_better` direction preserves the existing API behavior for metrics such as task success
+or quality scores; use `lower_is_better` for metrics such as cost, latency, or failure rate.
+
+```python
+from ai_eval_engineering.regression import (
+    BaselineRecord,
+    RegressionRule,
+    evaluate_gate,
+)
+
+baseline = BaselineRecord(
+    suite_version="suite-v1",
+    system_version="model-v1",
+    metrics={"task_success": 0.91, "latency_ms": 420.0},
+)
+
+result = evaluate_gate(
+    baseline,
+    {"task_success": 0.90, "latency_ms": 390.0},
+    [
+        RegressionRule("task_success", max_allowed_drop=0.02),
+        RegressionRule(
+            "latency_ms",
+            max_allowed_drop=50.0,
+            direction="lower_is_better",
+        ),
+    ],
+)
+assert result.passed
+```
+
+Metric values and regression tolerances must be finite numbers; tolerances must be non-negative.
+This gate checks the configured metric thresholds only. It does **not** establish statistical
+significance, verify that the current run used the same suite version, or prove overall production
+quality. Those concerns require a decision-grade release policy with explicit run metadata and
+uncertainty analysis.
+
 ## Online evaluation
 
 The online layer keeps exposure, outcome, variant, and segment identifiers separate. It provides a vendor-neutral A/B adapter, segment-level comparisons, and evidence guardrails that surface insufficient evidence instead of forcing a conclusion.
