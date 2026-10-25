@@ -24,9 +24,13 @@ def make_run(
     case_ids: list[str] | None = None,
     prompt_prefix: str = "question",
     metric: str = "quality",
+    extra_metrics: dict[str, list[float]] | None = None,
 ) -> EvaluationRun:
     ids = case_ids or [f"case-{index}" for index in range(len(scores))]
     assert len(ids) == len(scores)
+    for extra_name, extra_scores in (extra_metrics or {}).items():
+        assert extra_name != metric
+        assert len(extra_scores) == len(scores)
     cases = []
     for index, (case_id, score) in enumerate(zip(ids, scores, strict=True)):
         case = EvaluationCase(
@@ -37,13 +41,24 @@ def make_run(
             tags=("release-test",),
         )
         output = SystemOutput(case_id=case_id, output={"answer": f"actual {index}"})
-        grader = GraderResult(
-            grader=metric,
-            passed=True,
-            score=score,
-            details="deterministic test score",
-        )
-        cases.append(CaseResult(case=case, output=output, graders=(grader,)))
+        graders = [
+            GraderResult(
+                grader=metric,
+                passed=True,
+                score=score,
+                details="deterministic test score",
+            )
+        ]
+        for extra_name, extra_scores in (extra_metrics or {}).items():
+            graders.append(
+                GraderResult(
+                    grader=extra_name,
+                    passed=True,
+                    score=extra_scores[index],
+                    details="deterministic test score",
+                )
+            )
+        cases.append(CaseResult(case=case, output=output, graders=tuple(graders)))
     return EvaluationRun(
         manifest=RunMetadata(
             run_id=f"run-{version}",
@@ -308,3 +323,40 @@ def test_policy_rejects_negative_tolerance_and_too_small_minimum() -> None:
         ReleaseMetricPolicy("quality", max_allowed_regression=-0.1)
     with pytest.raises(ValueError, match="at least 2"):
         ReleaseMetricPolicy("quality", min_cases=1)
+
+
+
+def test_multi_metric_gate_uses_bonferroni_adjusted_confidence() -> None:
+    baseline = make_run(
+        "v1",
+        [0.5, 0.6, 0.7, 0.8],
+        extra_metrics={"latency_ms": [200.0, 210.0, 190.0, 205.0]},
+    )
+    candidate = make_run(
+        "v2",
+        [0.6, 0.7, 0.8, 0.9],
+        extra_metrics={"latency_ms": [150.0, 160.0, 140.0, 155.0]},
+    )
+
+    decision = evaluate_release_candidate(
+        baseline,
+        candidate,
+        [
+            ReleaseMetricPolicy("quality", min_cases=2),
+            ReleaseMetricPolicy(
+                "latency_ms", direction="lower_is_better", min_cases=2
+            ),
+        ],
+        confidence=0.95,
+        resamples=500,
+        seed=11,
+    )
+
+    assert decision.status == "PASS"
+    assert decision.confidence_level == 0.95
+    assert all(item.confidence_interval is not None for item in decision.metrics)
+    assert all(
+        item.confidence_interval.confidence == pytest.approx(0.975)
+        for item in decision.metrics
+        if item.confidence_interval is not None
+    )
