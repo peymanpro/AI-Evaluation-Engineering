@@ -141,7 +141,10 @@ def evaluate_release_candidate(
             candidate_by_id[case_id]
         ):
             return _invalid(
-                baseline, candidate, f"case definition changed for case {case_id!r}."
+                baseline,
+                candidate,
+                f"case definition changed for case {case_id!r}.",
+                confidence=confidence,
             )
 
     decisions: list[MetricGateDecision] = []
@@ -431,14 +434,18 @@ def _validate_options(*, confidence: float, resamples: int, seed: int) -> None:
 
 
 def _invalid(
-    baseline: EvaluationRun, candidate: EvaluationRun, reason: str
+    baseline: EvaluationRun,
+    candidate: EvaluationRun,
+    reason: str,
+    *,
+    confidence: float,
 ) -> ReleaseGateDecision:
     return ReleaseGateDecision(
         status="INVALID_EVIDENCE",
         baseline_system_version=_system_version(baseline),
         candidate_system_version=_system_version(candidate),
         suite_version=_suite_version(baseline),
-        confidence_level=0.95,
+        confidence_level=confidence,
         metrics=(),
         reasons=(reason,),
     )
