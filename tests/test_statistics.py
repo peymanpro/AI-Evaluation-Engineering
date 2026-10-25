@@ -5,6 +5,7 @@ import pytest
 from ai_eval_engineering.statistics import (
     bootstrap_difference_ci,
     bootstrap_mean_ci,
+    paired_bootstrap_difference_ci,
     paired_compare,
     variance_report,
 )
@@ -71,3 +72,22 @@ def test_paired_comparison_rejects_empty_populations() -> None:
 def test_bootstrap_rejects_non_integer_resample_count() -> None:
     with pytest.raises(TypeError, match="integer"):
         bootstrap_mean_ci([0.7, 0.8], resamples=100.5)  # type: ignore[arg-type]
+
+
+
+def test_paired_bootstrap_confidence_interval_is_reproducible() -> None:
+    baseline = [0.0, 1.0, 1.0, 0.0]
+    candidate = [1.0, 1.0, 0.0, 0.0]
+    first = paired_bootstrap_difference_ci(baseline, candidate, resamples=500, seed=7)
+    second = paired_bootstrap_difference_ci(baseline, candidate, resamples=500, seed=7)
+
+    assert first == second
+    assert first.estimate == pytest.approx(0.0)
+    assert first.lower <= first.estimate <= first.upper
+
+
+def test_paired_bootstrap_rejects_mismatched_or_singleton_data() -> None:
+    with pytest.raises(ValueError, match="equal population"):
+        paired_bootstrap_difference_ci([0.0, 1.0], [1.0], resamples=500)
+    with pytest.raises(ValueError, match="two paired observations"):
+        paired_bootstrap_difference_ci([0.0], [1.0], resamples=500)
