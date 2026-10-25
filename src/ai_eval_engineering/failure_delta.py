@@ -111,6 +111,10 @@ def compare_failure_runs(
             raise ValueError(
                 f"Cannot compare failure sets because case definition changed for {case_id!r}."
             )
+        if not before.graders or not after.graders:
+            raise ValueError(
+                f"Cannot compare failure sets because case {case_id!r} has no grader results."
+            )
         before_graders = {grader.grader for grader in before.graders}
         after_graders = {grader.grader for grader in after.graders}
         if before_graders != after_graders:
