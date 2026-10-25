@@ -220,9 +220,9 @@ class OnlineMetricContract:
             or not isinstance(self.exposure_count, int)
             or not isinstance(self.outcome_count, int)
         ):
-            raise ValueError("Counts must be non-negative integers.")
+            raise TypeError("Counts must be integers.")
         if self.exposure_count < 0 or self.outcome_count < 0:
-            raise ValueError("Counts must be non-negative integers.")
+            raise ValueError("Counts must be non-negative.")
 
 
 def build_metric_contract(
