@@ -21,7 +21,7 @@ class TradeoffObservation:
             ("latency_ms", self.latency_ms),
         ):
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ValueError(f"{name} must be a finite number")
+                raise TypeError(f"{name} must be numeric")
             try:
                 finite_value = float(value)
             except OverflowError as exc:
