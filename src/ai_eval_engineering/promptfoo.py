@@ -83,24 +83,28 @@ def import_promptfoo_payload(
         provider_ids.add(row_provider_id)
         prompt_indices.add(row_prompt_idx)
 
-    selected_providers = (
-        {provider_id} if provider_id is not None else provider_ids
-    )
-    selected_prompts = (
-        {prompt_idx} if prompt_idx is not None else prompt_indices
-    )
-    missing_providers = selected_providers - provider_ids
-    if missing_providers:
+    if provider_id is not None and provider_id not in provider_ids:
         raise ValueError(
             "Requested provider_id is not present in the Promptfoo export: "
-            + ", ".join(sorted(missing_providers))
+            + provider_id
         )
-    missing_prompts = selected_prompts - prompt_indices
-    if missing_prompts:
+    if prompt_idx is not None and prompt_idx not in prompt_indices:
         raise ValueError(
             "Requested prompt_idx is not present in the Promptfoo export: "
-            + ", ".join(str(index) for index in sorted(missing_prompts))
+            + str(prompt_idx)
         )
+
+    candidates = [
+        row_data
+        for row_data in parsed_rows
+        if (provider_id is None or row_data[1] == provider_id)
+        and (prompt_idx is None or row_data[2] == prompt_idx)
+    ]
+    if not candidates:
+        raise ValueError("No results match the supplied provider/prompt selectors.")
+
+    selected_providers = {row_data[1] for row_data in candidates}
+    selected_prompts = {row_data[2] for row_data in candidates}
     if len(selected_providers) != 1:
         raise ValueError(
             "Promptfoo export contains multiple providers; specify provider_id."
@@ -114,7 +118,7 @@ def import_promptfoo_payload(
     selected_prompt = next(iter(selected_prompts))
     selected_rows = [
         row_data
-        for row_data in parsed_rows
+        for row_data in candidates
         if row_data[1] == selected_provider and row_data[2] == selected_prompt
     ]
     if not selected_rows:
