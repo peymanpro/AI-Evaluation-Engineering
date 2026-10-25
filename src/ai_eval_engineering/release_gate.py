@@ -13,7 +13,7 @@ import statistics
 from dataclasses import dataclass
 from typing import Literal
 
-from .domain import CaseResult, EvaluationRun, GraderResult
+from .domain import CaseResult, EvaluationRun
 from .regression import MetricDirection
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 
@@ -305,19 +305,22 @@ def _validate_runs(
 
     baseline_ids = _case_ids(baseline, "baseline", reasons)
     candidate_ids = _case_ids(candidate, "candidate", reasons)
-    if baseline_ids is not None and candidate_ids is not None:
-        if baseline_ids != candidate_ids:
-            missing_candidate = sorted(baseline_ids - candidate_ids)
-            missing_baseline = sorted(candidate_ids - baseline_ids)
-            if missing_candidate:
-                reasons.append(
-                    "candidate is missing case ids: " + ", ".join(missing_candidate)
-                )
-            if missing_baseline:
-                reasons.append(
-                    "candidate contains unmatched case ids: "
-                    + ", ".join(missing_baseline)
-                )
+    if (
+        baseline_ids is not None
+        and candidate_ids is not None
+        and baseline_ids != candidate_ids
+    ):
+        missing_candidate = sorted(baseline_ids - candidate_ids)
+        missing_baseline = sorted(candidate_ids - baseline_ids)
+        if missing_candidate:
+            reasons.append(
+                "candidate is missing case ids: " + ", ".join(missing_candidate)
+            )
+        if missing_baseline:
+            reasons.append(
+                "candidate contains unmatched case ids: "
+                + ", ".join(missing_baseline)
+            )
 
     return reasons
 
