@@ -10,9 +10,9 @@ import pytest
 
 from ai_eval_engineering.domain import EvaluationRun
 from ai_eval_engineering.promptfoo import (
-    SUPPORTED_PROMPTFOO_RESULT_VERSION,
     import_promptfoo_payload,
     load_promptfoo_json,
+    SUPPORTED_PROMPTFOO_RESULT_VERSION,
 )
 
 
