@@ -47,8 +47,10 @@ The framework preserves raw case-level observations so aggregate claims can be i
     python examples/security_regression.py
     python examples/tradeoffs.py
     python examples/integrations.py
+    python examples/promptfoo_release_workflow.py
 
-Generated `artifacts/` output is ignored by Git.
+Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
+synthetic fixtures and makes no external model calls.
 
 ## Promptfoo adapter
 
@@ -118,7 +120,8 @@ python examples/promptfoo_release_workflow.py baseline.json candidate.json \
   --provider-id 'openai:chat:example-model' \
   --prompt-idx 0 \
   --min-cases 30 \
-  --max-allowed-regression 0.02
+  --max-allowed-regression 0.02 \
+  --enforce-gate
 ```
 
 The same `suite-version` must describe the same case definitions in both files. Choose the
@@ -129,9 +132,27 @@ separate release metrics.
 
 By default, the example prints the decision without rejecting a candidate solely because the
 decision is `FAIL` or `INCONCLUSIVE`. Add `--enforce-gate` in a CI/CD invocation to return
-exit code 1 for those decisions. Invalid evidence or incompatible runs return exit code 2. Review
-raw prompts, test variables, expected answers, and outputs for sensitive information before
-sharing exported JSON files or their generated reports.
+exit code 1 for those decisions. Invalid evidence or incompatible runs return exit code 2.
+Without `--enforce-gate`, a valid `FAIL` or `INCONCLUSIVE` decision is printed but does not
+reject the command; `INVALID_EVIDENCE` still returns exit code 2.
+
+Example output from the committed synthetic fixtures (numeric values are deterministic for the
+configured seed and bootstrap settings):
+
+```text
+Baseline:  model-v1 | 30 cases
+Candidate: model-v2 | 30 cases
+
+Release decision: FAIL
+promptfoo: baseline=0.8000, candidate=0.5000, delta=-0.3000
+95% CI=[-0.5000, -0.1000], n=30
+
+failure delta: 11 new, 2 resolved, 4 persistent
+```
+
+The example scores and failure counts demonstrate plumbing and regression detection only; they are
+not measured model performance. Review raw prompts, test variables, expected answers, outputs,
+and generated reports for sensitive information before sharing exported files or reports.
 
 ## External evaluation result interchange
 
@@ -430,14 +451,24 @@ Every reported evaluation should identify:
 - uncertainty where applicable;
 - known limitations.
 
-## V1.1 boundary
+## Current scope boundary
 
-The completed portfolio scope intentionally stops before online experimentation, cloud-provider integration, and production analytics adapters.
+This repository provides offline evaluation, deterministic comparison, release-gate logic, failure
+deltas, and vendor-neutral Promptfoo result import. It also includes online-evaluation primitives
+and examples, but it is not a deployed experimentation platform. Live cloud-provider integrations
+and production analytics adapters remain outside the current scope. The Promptfoo CI demonstration
+uses synthetic fixtures; real provider output is only evaluated when the caller supplies real JSON
+exports.
 
 See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `docs/V1.1-CLOSURE.md`.
 
 ## Automated releases
 
-The release workflow reads the version from `pyproject.toml`, runs the test suite, Ruff, mypy, and the project's core, online-evaluation, security-regression, trade-off, and integration-contract demonstrations. It then builds the Python distributions and attaches them to the GitHub Release with generated release notes.
+The release workflow reads the version from `pyproject.toml`, runs the test suite, Ruff, mypy, and
+the project's core, online-evaluation, security-regression, trade-off, integration-contract, and
+Promptfoo baseline/candidate demonstrations. The Promptfoo demonstration verifies the expected
+`FAIL` decision and the 11-new / 2-resolved / 4-persistent failure counts using synthetic
+fixtures. The workflow then builds the Python distributions and attaches them to the GitHub Release
+with generated release notes.
 
 To publish the next version, increment `[project].version` in `pyproject.toml` and push to `main`, or push a matching `vMAJOR.MINOR.PATCH` tag. Existing version tags and releases are never overwritten. The wheel and source distribution are attached only after the CLI, evaluation, security-regression, trade-off, and integration-contract demonstrations complete successfully. Those integration adapters are deterministic contract snapshots rather than live-process integration claims.
