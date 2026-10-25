@@ -58,6 +58,44 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Failure-to-regression memory
+
+A failed grader/case pair can be captured as a stable regression-memory record, merged across
+runs, saved to JSONL, and rebuilt into a small regression suite. Repeated failures keep their
+history by run ID; the record identity remains stable across system versions when the versioned
+suite, test definition, and grader name remain unchanged.
+
+```python
+from pathlib import Path
+
+from ai_eval_engineering import (
+    build_failure_regression_suite,
+    extract_failure_records,
+    merge_failure_memory,
+    read_failure_memory,
+    write_failure_memory,
+)
+
+memory_path = Path("failure-memory.jsonl")
+existing = read_failure_memory(memory_path) if memory_path.exists() else ()
+observed = extract_failure_records(completed_run)
+memory = merge_failure_memory(existing, observed)
+write_failure_memory(memory, memory_path)
+
+regression_suite = build_failure_regression_suite(
+    memory,
+    version="regression-v1",
+)
+print(f"Known failure records: {len(memory)}")
+print(f"Unique regression cases: {len(regression_suite.cases)}")
+```
+
+The JSONL record stores the case input, expected value, metadata, grader score/details, and
+run history, but deliberately omits the observed model output by default. Input prompts, expected
+values, metadata, and grader details can still contain sensitive information; inspect or redact
+them before writing the memory file. The generated suite deduplicates identical cases and rejects
+conflicting definitions that reuse the same case ID.
+
 ## Decision-grade release evaluation
 
 Use `evaluate_release_candidate` when you need more than a threshold-only regression check.

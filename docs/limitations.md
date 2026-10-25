@@ -18,3 +18,6 @@
 - A release `PASS` means the configured intervals meet the configured tolerances on the supplied suite. Metric direction, practical tolerance, suite quality, and the risk of evaluating many metrics remain user responsibilities.
 - `INCONCLUSIVE` is intentional when the configured minimum case count is not met or when the uncertainty interval overlaps a release threshold; it must not be interpreted as a pass.
 - When multiple metrics are gated in one release decision, the engine applies a Bonferroni adjustment to the requested confidence level. This is conservative, but bootstrap interval coverage is approximate and should not be described as a formal statistical guarantee.
+- Failure regression memory is a local JSONL artifact, not a secure vault. It omits observed model outputs by default, but case inputs, expected values, metadata, and grader details may contain sensitive data and must be reviewed or redacted before storage.
+- Failure-memory identity is tied to suite version, system name, case definition, and grader name. It does not version grader implementation or rubric semantics; bump the suite or other external versioning metadata when those semantics change.
+- Merged failure records should be processed in chronological run order so first/last-seen history remains meaningful.

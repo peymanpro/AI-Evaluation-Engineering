@@ -13,6 +13,14 @@ from .domain import (
 )
 from .evidence import write_evidence_package
 from .evidence_guardrails import EvidenceAssessment, EvidenceIssue, assess_online_evidence
+from .failure_memory import (
+    FailureRecord,
+    build_failure_regression_suite,
+    extract_failure_records,
+    merge_failure_memory,
+    read_failure_memory,
+    write_failure_memory,
+)
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -61,6 +69,7 @@ __all__ = [
     "EvidenceAssessment",
     "EvidenceIssue",
     "Exposure",
+    "FailureRecord",
     "GraderResult",
     "IntegrationSpec",
     "MetricGateDecision",
@@ -76,6 +85,7 @@ __all__ = [
     "Trajectory",
     "TrajectoryEvent",
     "assess_online_evidence",
+    "build_failure_regression_suite",
     "build_metric_contract",
     "building_software_adapter",
     "building_software_suite",
@@ -83,12 +93,16 @@ __all__ = [
     "evaluate_release_candidate",
     "evidence_rag_adapter",
     "evidence_rag_suite",
+    "extract_failure_records",
     "how_agents_adapter",
     "how_agents_suite",
+    "merge_failure_memory",
     "paired_bootstrap_difference_ci",
     "quality_cost_frontier",
     "quality_latency_frontier",
+    "read_failure_memory",
     "run_contract_demo",
     "summarize_adversarial_cases",
     "write_evidence_package",
+    "write_failure_memory",
 ]
