@@ -10,7 +10,6 @@ from ai_eval_engineering import (
     load_promptfoo_json,
 )
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 PROVIDER_ID = "openai:mock:answerer"
 PROMPT_IDX = 0
