@@ -269,3 +269,42 @@ def test_duplicate_metric_policies_are_rejected() -> None:
                 ReleaseMetricPolicy("quality", min_cases=2),
             ],
         )
+
+
+
+def test_non_finite_grader_score_is_invalid_evidence() -> None:
+    baseline = make_run("v1", [0.7, 0.8])
+    candidate = make_run("v2", [0.8, 0.9])
+    bad = candidate.cases[0]
+    candidate = EvaluationRun(
+        candidate.manifest,
+        (
+            CaseResult(
+                bad.case,
+                bad.output,
+                (
+                    GraderResult(
+                        grader="quality",
+                        passed=False,
+                        score=float("nan"),
+                        details="invalid test score",
+                    ),
+                ),
+            ),
+            *candidate.cases[1:],
+        ),
+    )
+
+    decision = evaluate_release_candidate(
+        baseline, candidate, [ReleaseMetricPolicy("quality", min_cases=2)]
+    )
+
+    assert decision.status == "INVALID_EVIDENCE"
+    assert any("non-finite score" in reason for reason in decision.reasons)
+
+
+def test_policy_rejects_negative_tolerance_and_too_small_minimum() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        ReleaseMetricPolicy("quality", max_allowed_regression=-0.1)
+    with pytest.raises(ValueError, match="at least 2"):
+        ReleaseMetricPolicy("quality", min_cases=1)
