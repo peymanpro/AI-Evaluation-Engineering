@@ -53,7 +53,8 @@ class FailureDeltaReport:
 
     @property
     def all_baseline_failures_resolved(self) -> bool:
-        return not self.resolved_failures and not self.persistent_failures
+        """Whether none of the baseline's failures still fails in the candidate."""
+        return not self.persistent_failures
 
     def summary(self) -> str:
         return (
