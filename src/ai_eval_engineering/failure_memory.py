@@ -16,7 +16,6 @@ from typing import Any
 
 from .domain import EvaluationCase, EvaluationRun, EvaluationSuite
 
-
 _SCHEMA_VERSION = 1
 
 
