@@ -11,8 +11,9 @@ import json
 import math
 import tempfile
 from dataclasses import dataclass
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .domain import EvaluationCase, EvaluationRun, EvaluationSuite
 
@@ -308,18 +309,20 @@ def build_failure_regression_suite(
 
 
 def _case_payload(case: EvaluationCase) -> dict[str, Any]:
-    if not isinstance(case.id, str) or not case.id.strip():
+    if not isinstance(case.id, str):
+        raise TypeError("case id must be a string.")
+    if not case.id.strip():
         raise ValueError("case id must not be empty.")
     if not isinstance(case.input, dict):
-        raise ValueError("case input must be a JSON object.")
+        raise TypeError("case input must be a JSON object.")
     if not isinstance(case.metadata, dict):
-        raise ValueError("case metadata must be a JSON object.")
-    if not isinstance(case.tags, (tuple, list)) or any(
-        not isinstance(tag, str) for tag in case.tags
-    ):
-        raise ValueError("case tags must be a sequence of strings.")
+        raise TypeError("case metadata must be a JSON object.")
+    if not isinstance(case.tags, (tuple, list)):
+        raise TypeError("case tags must be a sequence of strings.")
+    if any(not isinstance(tag, str) for tag in case.tags):
+        raise TypeError("case tags must contain only strings.")
     if case.risk_category is not None and not isinstance(case.risk_category, str):
-        raise ValueError("case risk_category must be a string or null.")
+        raise TypeError("case risk_category must be a string or null.")
     return {
         "id": case.id,
         "input": case.input,
@@ -366,30 +369,36 @@ def _record_payload(record: FailureRecord) -> dict[str, Any]:
 
 def _record_from_payload(payload: Any) -> FailureRecord:
     if not isinstance(payload, dict):
-        raise ValueError("record must be a JSON object.")
+        raise TypeError("record must be a JSON object.")
     if payload.get("schema_version") != _SCHEMA_VERSION:
         raise ValueError(f"unsupported schema_version {payload.get('schema_version')!r}.")
     case_data = payload.get("case")
     if not isinstance(case_data, dict):
-        raise ValueError("case must be a JSON object.")
+        raise TypeError("case must be a JSON object.")
     input_data = case_data.get("input")
     metadata = case_data.get("metadata", {})
     tags = case_data.get("tags", [])
     if not isinstance(input_data, dict):
-        raise ValueError("case.input must be a JSON object.")
+        raise TypeError("case.input must be a JSON object.")
     if not isinstance(metadata, dict):
-        raise ValueError("case.metadata must be a JSON object.")
-    if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
-        raise ValueError("case.tags must be a list of strings.")
+        raise TypeError("case.metadata must be a JSON object.")
+    if not isinstance(tags, list):
+        raise TypeError("case.tags must be a list of strings.")
+    if any(not isinstance(tag, str) for tag in tags):
+        raise TypeError("case.tags must contain only strings.")
     case_id = case_data.get("id")
-    if not isinstance(case_id, str) or not case_id.strip():
+    if not isinstance(case_id, str):
+        raise TypeError("case.id must be a string.")
+    if not case_id.strip():
         raise ValueError("case.id must not be empty.")
     risk_category = case_data.get("risk_category")
     if risk_category is not None and not isinstance(risk_category, str):
-        raise ValueError("case.risk_category must be a string or null.")
+        raise TypeError("case.risk_category must be a string or null.")
     seen = payload.get("seen_run_ids")
-    if not isinstance(seen, list) or any(not isinstance(item, str) for item in seen):
-        raise ValueError("seen_run_ids must be a list of strings.")
+    if not isinstance(seen, list):
+        raise TypeError("seen_run_ids must be a list of strings.")
+    if any(not isinstance(item, str) for item in seen):
+        raise TypeError("seen_run_ids must contain only strings.")
     return FailureRecord(
         failure_id=payload["failure_id"],
         case=EvaluationCase(
