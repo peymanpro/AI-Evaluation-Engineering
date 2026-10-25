@@ -196,13 +196,11 @@ class OnlineMetricContract:
         if (
             isinstance(self.exposure_count, bool)
             or isinstance(self.outcome_count, bool)
-            or self.exposure_count < 0
-            or self.outcome_count < 0
+            or not isinstance(self.exposure_count, int)
+            or not isinstance(self.outcome_count, int)
         ):
             raise ValueError("Counts must be non-negative integers.")
-        if not isinstance(self.exposure_count, int) or not isinstance(
-            self.outcome_count, int
-        ):
+        if self.exposure_count < 0 or self.outcome_count < 0:
             raise ValueError("Counts must be non-negative integers.")
 
 
