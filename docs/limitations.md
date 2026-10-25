@@ -17,3 +17,4 @@
 - Release-gate confidence intervals use a percentile bootstrap over per-case paired differences. This is appropriate only when case-level scores are genuinely matched and representative of the target evaluation population; it is not a formal power analysis or production-wide guarantee.
 - A release `PASS` means the configured intervals meet the configured tolerances on the supplied suite. Metric direction, practical tolerance, suite quality, and the risk of evaluating many metrics remain user responsibilities.
 - `INCONCLUSIVE` is intentional when the configured minimum case count is not met or when the uncertainty interval overlaps a release threshold; it must not be interpreted as a pass.
+- When multiple metrics are gated in one release decision, the engine applies a Bonferroni adjustment to the requested confidence level. This is conservative, but bootstrap interval coverage is approximate and should not be described as a formal statistical guarantee.
