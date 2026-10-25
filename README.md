@@ -50,6 +50,46 @@ The framework preserves raw case-level observations so aggregate claims can be i
 
 Generated `artifacts/` output is ignored by Git.
 
+## Promptfoo adapter
+
+Promptfoo v3 exports can be imported directly from the JSON file produced by
+`promptfoo eval -o results.json`. The adapter normalizes one provider/prompt combination into an
+`EvaluationRun`, preserving case variables and assertions, pass/fail score, grader reason,
+latency, cost, named scores, and available error/trace identifiers.
+
+```python
+from ai_eval_engineering import load_promptfoo_json
+
+run = load_promptfoo_json(
+    "results.json",
+    system_name="support-assistant",
+    system_version="git:9f3ab21",
+    suite_version="support-suite-v2",
+    provider_id="openai:chat:example-model",
+    prompt_idx=0,
+)
+
+print(run.manifest.run_id)
+print(len(run.cases))
+```
+
+The system and suite versions are supplied by the caller so the release gate can compare the
+intended revisions. Promptfoo exports that contain multiple providers or prompt indices must be
+sliced explicitly with `provider_id` and/or `prompt_idx`; the adapter refuses ambiguous mixes.
+For provider/runtime error rows without a model response, it retains the failed case with a null
+output and the error reason rather than dropping it.
+
+The initial adapter targets the documented Promptfoo v3 JSON envelope
+(`results.version == 3`, with result rows in `results.results`). It does not yet import JSONL,
+CSV, JUnit XML, Promptfoo v2 files, or red-team-specific exports. See the
+[Promptfoo JSON output format](https://www.promptfoo.dev/docs/configuration/outputs/) and
+[Promptfoo CI/CD JSON schema](https://www.promptfoo.dev/docs/integrations/ci-cd/) for the source
+format.
+
+Promptfoo JSON exports may contain raw model output, prompts, variables, configuration, and
+other sensitive data. Review the source file and protect imported artifacts before committing or
+sharing them.
+
 ## External evaluation result interchange
 
 External tools can import their completed evaluations through a small, versioned JSON contract.

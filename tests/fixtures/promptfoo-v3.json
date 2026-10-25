@@ -1,0 +1,154 @@
+{
+  "evalId": "promptfoo-eval-fixture-001",
+  "shareableUrl": null,
+  "results": {
+    "version": 3,
+    "timestamp": "2026-10-26T00:30:00Z",
+    "stats": {
+      "successes": 2,
+      "failures": 2,
+      "errors": 1
+    },
+    "prompts": [
+      {"id": "prompt-hash-v1", "raw": "Answer: {{question}}"},
+      {"id": "prompt-hash-v2", "raw": "Reason briefly: {{question}}"}
+    ],
+    "results": [
+      {
+        "id": "row-0-openai-p0",
+        "testIdx": 0,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-v1",
+        "provider": {"id": "openai:mock:answerer", "label": "Mock Answerer"},
+        "testCase": {
+          "vars": {"question": "What is 2 + 2?"},
+          "assert": [{"type": "equals", "value": {"answer": 4}}],
+          "options": {},
+          "metadata": {"tags": ["arithmetic"]}
+        },
+        "vars": {"question": "What is 2 + 2?"},
+        "response": {
+          "output": {"answer": 4},
+          "cost": 0.001,
+          "tokenUsage": {"total": 12}
+        },
+        "cost": 0.001,
+        "latencyMs": 10,
+        "success": true,
+        "score": 1.0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1.0,
+          "reason": "Expected answer matched",
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1.0,
+              "reason": "Object equality passed",
+              "assertion": {"type": "equals"}
+            }
+          ]
+        },
+        "namedScores": {"correctness": 1.0},
+        "failureReason": 0,
+        "tokenUsage": {"total": 12}
+      },
+      {
+        "id": "row-1-openai-p0",
+        "testIdx": 1,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-v1",
+        "provider": {"id": "openai:mock:answerer", "label": "Mock Answerer"},
+        "testCase": {
+          "vars": {"question": "What is 3 + 5?"},
+          "assert": [{"type": "equals", "value": {"answer": 8}}],
+          "options": {},
+          "metadata": {"tags": ["arithmetic", "regression"]}
+        },
+        "vars": {"question": "What is 3 + 5?"},
+        "response": {"output": {"answer": 7}, "cost": 0.002},
+        "cost": 0.002,
+        "latencyMs": 24,
+        "success": false,
+        "score": 0.0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0.0,
+          "reason": "Expected answer 8, received 7",
+          "componentResults": [
+            {
+              "pass": false,
+              "score": 0.0,
+              "reason": "Object equality failed",
+              "assertion": {"type": "equals"}
+            }
+          ]
+        },
+        "namedScores": {"correctness": 0.0},
+        "failureReason": 1
+      },
+      {
+        "id": "row-2-openai-p0-error",
+        "testIdx": 2,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-v1",
+        "provider": {"id": "openai:mock:answerer", "label": "Mock Answerer"},
+        "testCase": {
+          "vars": {"question": "This call times out"},
+          "assert": [],
+          "options": {},
+          "metadata": {}
+        },
+        "vars": {"question": "This call times out"},
+        "error": "Provider timed out",
+        "success": false,
+        "score": 0.0,
+        "gradingResult": null,
+        "namedScores": {},
+        "failureReason": 2
+      },
+      {
+        "id": "row-0-anthropic-p0",
+        "testIdx": 0,
+        "promptIdx": 0,
+        "promptId": "prompt-anthropic-v1",
+        "provider": {"id": "anthropic:mock:answerer", "label": "Mock Answerer"},
+        "testCase": {
+          "vars": {"question": "What is 2 + 2?"},
+          "assert": [{"type": "equals", "value": {"answer": 4}}],
+          "options": {},
+          "metadata": {}
+        },
+        "vars": {"question": "What is 2 + 2?"},
+        "response": {"output": {"answer": 4}, "cost": 0.004},
+        "cost": 0.004,
+        "latencyMs": 15,
+        "success": true,
+        "score": 1.0,
+        "gradingResult": {"pass": true, "score": 1.0, "reason": "Passed"},
+        "namedScores": {}
+      },
+      {
+        "id": "row-0-openai-p1",
+        "testIdx": 0,
+        "promptIdx": 1,
+        "promptId": "prompt-hash-v2",
+        "provider": {"id": "openai:mock:answerer", "label": "Mock Answerer"},
+        "testCase": {
+          "vars": {"question": "What is 2 + 2?"},
+          "assert": [{"type": "equals", "value": {"answer": 4}}],
+          "options": {},
+          "metadata": {}
+        },
+        "vars": {"question": "What is 2 + 2?"},
+        "response": {"output": "The answer is 4"},
+        "latencyMs": 18,
+        "success": true,
+        "score": 0.8,
+        "gradingResult": {"pass": true, "score": 0.8, "reason": "Passed with explanation"},
+        "namedScores": {}
+      }
+    ]
+  },
+  "config": {"description": "Committed fixture with synthetic data only"}
+}

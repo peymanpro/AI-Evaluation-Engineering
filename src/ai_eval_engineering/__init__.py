@@ -56,6 +56,11 @@ from .online import (
     Outcome,
     build_metric_contract,
 )
+from .promptfoo import (
+    SUPPORTED_PROMPTFOO_RESULT_VERSION,
+    import_promptfoo_payload,
+    load_promptfoo_json,
+)
 from .release_gate import (
     MetricGateDecision,
     ReleaseGateDecision,
@@ -77,6 +82,7 @@ from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
     "EXTERNAL_RUN_SCHEMA_VERSION",
+    "SUPPORTED_PROMPTFOO_RESULT_VERSION",
     "ABResultAdapter",
     "AdversarialCase",
     "AdversarialCategory",
@@ -132,7 +138,9 @@ __all__ = [
     "extract_failure_records",
     "how_agents_adapter",
     "how_agents_suite",
+    "import_promptfoo_payload",
     "import_run_payload",
+    "load_promptfoo_json",
     "load_run_json",
     "merge_failure_memory",
     "paired_bootstrap_difference_ci",
