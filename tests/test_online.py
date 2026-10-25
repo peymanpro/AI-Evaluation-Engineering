@@ -117,5 +117,5 @@ def test_exposure_rejects_non_string_identifiers() -> None:
 def test_metric_contract_rejects_non_integer_counts() -> None:
     from ai_eval_engineering.online import OnlineMetricContract
 
-    with pytest.raises(ValueError, match="non-negative integers"):
+    with pytest.raises(TypeError, match="integers"):
         OnlineMetricContract("exp-1", "conversion", 1.5, 2)  # type: ignore[arg-type]
