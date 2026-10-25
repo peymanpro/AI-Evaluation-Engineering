@@ -12,3 +12,8 @@
 - Duplicate exposure/outcome records and outcomes without a matching exposure invalidate the configured online-evidence checks; they must not silently increase sample counts.
 - A bootstrap confidence interval is not reported for an online comparison when either group contains fewer than two observations. The descriptive difference remains available, and the missing interval must not be interpreted as certainty.
 - The independent-sample bootstrap difference interval assumes separate groups. Results paired by case or prompt require a paired method rather than independent resampling.
+
+- The decision-grade release gate requires baseline and candidate runs to share the same system name, suite version, case identifiers, and case definitions. This catches common comparison-integrity problems but cannot prove the grader implementations or their semantic correctness are unchanged.
+- Release-gate confidence intervals use a percentile bootstrap over per-case paired differences. This is appropriate only when case-level scores are genuinely matched and representative of the target evaluation population; it is not a formal power analysis or production-wide guarantee.
+- A release `PASS` means the configured intervals meet the configured tolerances on the supplied suite. Metric direction, practical tolerance, suite quality, and the risk of evaluating many metrics remain user responsibilities.
+- `INCONCLUSIVE` is intentional when the configured minimum case count is not met or when the uncertainty interval overlaps a release threshold; it must not be interpreted as a pass.
