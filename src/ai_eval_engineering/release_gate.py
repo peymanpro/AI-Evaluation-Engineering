@@ -47,7 +47,11 @@ class ReleaseMetricPolicy:
             or not isinstance(self.max_allowed_regression, (int, float))
         ):
             raise TypeError("max_allowed_regression must be numeric.")
-        if not math.isfinite(float(self.max_allowed_regression)):
+        try:
+            tolerance = float(self.max_allowed_regression)
+        except OverflowError as exc:
+            raise ValueError("max_allowed_regression must be finite.") from exc
+        if not math.isfinite(tolerance):
             raise ValueError("max_allowed_regression must be finite.")
         if self.max_allowed_regression < 0:
             raise ValueError("max_allowed_regression must be non-negative.")
@@ -78,6 +82,7 @@ class ReleaseGateDecision:
     baseline_system_version: str | None
     candidate_system_version: str | None
     suite_version: str | None
+    confidence_level: float
     metrics: tuple[MetricGateDecision, ...]
     reasons: tuple[str, ...]
 
@@ -122,6 +127,7 @@ def evaluate_release_candidate(
             baseline_system_version=_system_version(baseline),
             candidate_system_version=_system_version(candidate),
             suite_version=_suite_version(baseline),
+            confidence_level=confidence,
             metrics=(),
             reasons=tuple(invalid_reasons),
         )
@@ -153,6 +159,7 @@ def evaluate_release_candidate(
                 baseline_system_version=baseline.manifest.system_version,
                 candidate_system_version=candidate.manifest.system_version,
                 suite_version=baseline.manifest.suite_version,
+                confidence_level=confidence,
                 metrics=tuple(decisions),
                 reasons=reasons,
             )
@@ -189,10 +196,13 @@ def evaluate_release_candidate(
             )
             continue
 
+        # Bonferroni adjustment keeps the configured confidence level family-wise
+        # across the requested metrics. Bootstrap intervals remain approximate.
+        metric_confidence = 1.0 - (1.0 - confidence) / len(policies)
         interval = paired_bootstrap_difference_ci(
             baseline_scores,
             candidate_scores,
-            confidence=confidence,
+            confidence=metric_confidence,
             resamples=resamples,
             seed=seed,
         )
@@ -206,19 +216,19 @@ def evaluate_release_candidate(
         if lower >= threshold:
             status: MetricStatus = "PASS"
             reason = (
-                f"{confidence:.1%} paired-bootstrap interval lower bound "
+                f"{interval.confidence:.1%} paired-bootstrap interval lower bound "
                 f"{lower:.6g} meets allowed-regression threshold {threshold:.6g}"
             )
         elif upper < threshold:
             status = "FAIL"
             reason = (
-                f"{confidence:.1%} paired-bootstrap interval upper bound "
+                f"{interval.confidence:.1%} paired-bootstrap interval upper bound "
                 f"{upper:.6g} is below allowed-regression threshold {threshold:.6g}"
             )
         else:
             status = "INCONCLUSIVE"
             reason = (
-                f"{confidence:.1%} paired-bootstrap interval "
+                f"{interval.confidence:.1%} paired-bootstrap interval "
                 f"[{lower:.6g}, {upper:.6g}] overlaps allowed-regression "
                 f"threshold {threshold:.6g}"
             )
@@ -256,6 +266,7 @@ def evaluate_release_candidate(
         baseline_system_version=baseline.manifest.system_version,
         candidate_system_version=candidate.manifest.system_version,
         suite_version=baseline.manifest.suite_version,
+        confidence_level=confidence,
         metrics=tuple(decisions),
         reasons=reasons,
     )
@@ -326,9 +337,12 @@ def _case_ids(run: EvaluationRun, label: str, reasons: list[str]) -> set[str] | 
         except (TypeError, ValueError) as exc:
             reasons.append(f"{label} case {case_id!r} is not JSON-serializable: {exc}.")
         names = [grader.grader for grader in result.graders]
-        if any(not isinstance(name, str) or not name.strip() for name in names):
+        valid_names = all(
+            isinstance(name, str) and name.strip() for name in names
+        )
+        if not valid_names:
             reasons.append(f"{label} case {case_id!r} contains an empty grader name.")
-        if len(names) != len(set(names)):
+        elif len(names) != len(set(names)):
             reasons.append(f"{label} case {case_id!r} contains duplicate grader names.")
         for grader in result.graders:
             if (
@@ -339,11 +353,16 @@ def _case_ids(run: EvaluationRun, label: str, reasons: list[str]) -> set[str] | 
                     f"{label} case {case_id!r} grader {grader.grader!r} "
                     "has a non-numeric score."
                 )
-            elif not math.isfinite(float(grader.score)):
-                reasons.append(
-                    f"{label} case {case_id!r} grader {grader.grader!r} "
-                    "has a non-finite score."
-                )
+            else:
+                try:
+                    finite_score = math.isfinite(float(grader.score))
+                except OverflowError:
+                    finite_score = False
+                if not finite_score:
+                    reasons.append(
+                        f"{label} case {case_id!r} grader {grader.grader!r} "
+                        "has a non-finite score."
+                    )
     if len(ids) != len(set(ids)):
         reasons.append(f"{label} run contains duplicate case ids.")
     return set(ids) if len(ids) == len(set(ids)) else None
@@ -382,20 +401,26 @@ def _metric_scores(
         if len(matches) != 1:
             return None, f"{label} run has duplicate grader metric {metric!r} for case {case_id!r}."
         score = matches[0].score
-        if (
-            isinstance(score, bool)
-            or not isinstance(score, (int, float))
-            or not math.isfinite(float(score))
-        ):
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
             return None, f"{label} run has invalid score for metric {metric!r}, case {case_id!r}."
-        scores.append(float(score))
+        try:
+            score_value = float(score)
+        except OverflowError:
+            return None, f"{label} run has invalid score for metric {metric!r}, case {case_id!r}."
+        if not math.isfinite(score_value):
+            return None, f"{label} run has invalid score for metric {metric!r}, case {case_id!r}."
+        scores.append(score_value)
     return scores, None
 
 
 def _validate_options(*, confidence: float, resamples: int, seed: int) -> None:
     if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
         raise TypeError("confidence must be numeric.")
-    if not math.isfinite(float(confidence)) or not 0.0 < confidence < 1.0:
+    try:
+        confidence_value = float(confidence)
+    except OverflowError as exc:
+        raise ValueError("confidence must be finite and between 0 and 1.") from exc
+    if not math.isfinite(confidence_value) or not 0.0 < confidence_value < 1.0:
         raise ValueError("confidence must be finite and between 0 and 1.")
     if isinstance(resamples, bool) or not isinstance(resamples, int):
         raise TypeError("resamples must be an integer.")
@@ -413,6 +438,7 @@ def _invalid(
         baseline_system_version=_system_version(baseline),
         candidate_system_version=_system_version(candidate),
         suite_version=_suite_version(baseline),
+        confidence_level=0.95,
         metrics=(),
         reasons=(reason,),
     )
