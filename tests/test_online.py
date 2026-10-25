@@ -52,6 +52,7 @@ def test_ab_adapter_compares_variants_with_independent_bootstrap() -> None:
     assert comparison.baseline_sample_size == 2
     assert comparison.candidate_sample_size == 2
     assert comparison.mean_difference == 0.5
+    assert comparison.confidence_interval is not None
 
 
 def test_segment_comparisons_keep_segment_metrics_separate() -> None:
@@ -78,6 +79,7 @@ def test_segment_comparisons_keep_segment_metrics_separate() -> None:
     )
     assert set(comparisons) == {"desktop", "mobile"}
     assert comparisons["mobile"].mean_difference == 1.0
+    assert comparisons["mobile"].confidence_interval is None
 
 
 def test_metric_contract_requires_one_experiment() -> None:
