@@ -185,6 +185,10 @@ def calibrate_judge(
         raise ValueError("Calibration cases must have unique IDs.")
 
     expected_ids = set(case_ids)
+    if any(not isinstance(case_id, str) for case_id in outputs):
+        raise TypeError("Output mapping keys must be strings.")
+    if any(not isinstance(case_id, str) for case_id in human_labels):
+        raise TypeError("Human-label mapping keys must be strings.")
     if set(outputs) != expected_ids:
         missing = sorted(expected_ids - set(outputs))
         extra = sorted(set(outputs) - expected_ids)
@@ -211,6 +215,10 @@ def calibrate_judge(
             raise TypeError(f"Human label for case {case_id!r} must be a string.")
         if not label.strip():
             raise ValueError(f"Human label for case {case_id!r} must not be empty.")
+        if label != label.strip():
+            raise ValueError(
+                f"Human label for case {case_id!r} must not contain surrounding whitespace."
+            )
     for case_id, output in outputs.items():
         if not isinstance(output, SystemOutput):
             raise TypeError(f"Output for case {case_id!r} must be a SystemOutput.")
