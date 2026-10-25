@@ -124,6 +124,51 @@ def bootstrap_difference_ci(
     )
 
 
+def paired_bootstrap_difference_ci(
+    baseline: list[float],
+    candidate: list[float],
+    confidence: float = 0.95,
+    resamples: int = 2000,
+    seed: int = 0,
+) -> ConfidenceInterval:
+    """Estimate a percentile-bootstrap CI for paired candidate-minus-baseline deltas.
+
+    Values at the same index must refer to the same case, prompt, or unit. The
+    function resamples the observed paired differences, not each population
+    independently.
+    """
+    baseline_checked = _validate_values(baseline, name="baseline")
+    candidate_checked = _validate_values(candidate, name="candidate")
+    if not baseline_checked or not candidate_checked:
+        raise ValueError("Both populations require at least one value.")
+    if len(baseline_checked) != len(candidate_checked):
+        raise ValueError("Paired bootstrap requires equal population sizes.")
+    _validate_bootstrap_options(confidence, resamples)
+    if len(baseline_checked) < 2:
+        raise ValueError("At least two paired observations are required to estimate uncertainty.")
+
+    differences = [
+        candidate_value - baseline_value
+        for baseline_value, candidate_value in zip(
+            baseline_checked, candidate_checked, strict=True
+        )
+    ]
+    rng = random.Random(seed)
+    samples = [
+        statistics.fmean(rng.choices(differences, k=len(differences)))
+        for _ in range(resamples)
+    ]
+    samples.sort()
+    alpha = (1.0 - confidence) / 2.0
+    return ConfidenceInterval(
+        estimate=statistics.fmean(differences),
+        lower=_quantile(samples, alpha),
+        upper=_quantile(samples, 1.0 - alpha),
+        confidence=confidence,
+        resamples=resamples,
+    )
+
+
 def variance_report(values: list[float]) -> VarianceReport:
     checked = _validate_values(values, name="values")
     if not checked:
