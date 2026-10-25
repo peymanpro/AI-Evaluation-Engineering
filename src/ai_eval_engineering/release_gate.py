@@ -217,19 +217,19 @@ def evaluate_release_candidate(
         threshold = -float(policy.max_allowed_regression)
         lower, upper = favorable_interval
         if lower >= threshold:
-            status: MetricStatus = "PASS"
+            metric_status: MetricStatus = "PASS"
             reason = (
                 f"{interval.confidence:.1%} paired-bootstrap interval lower bound "
                 f"{lower:.6g} meets allowed-regression threshold {threshold:.6g}"
             )
         elif upper < threshold:
-            status = "FAIL"
+            metric_status = "FAIL"
             reason = (
                 f"{interval.confidence:.1%} paired-bootstrap interval upper bound "
                 f"{upper:.6g} is below allowed-regression threshold {threshold:.6g}"
             )
         else:
-            status = "INCONCLUSIVE"
+            metric_status = "INCONCLUSIVE"
             reason = (
                 f"{interval.confidence:.1%} paired-bootstrap interval "
                 f"[{lower:.6g}, {upper:.6g}] overlaps allowed-regression "
@@ -247,7 +247,7 @@ def evaluate_release_candidate(
                 confidence_interval=interval,
                 favorable_interval=favorable_interval,
                 sample_size=sample_size,
-                status=status,
+                status=metric_status,
                 reason=reason,
             )
         )
