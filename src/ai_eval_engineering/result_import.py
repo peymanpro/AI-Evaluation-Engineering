@@ -221,7 +221,9 @@ def _parse_output(
             f"{location}.case_id {case_id!r} does not match case id "
             f"{expected_case_id!r}."
         )
-    output = data.get("output")
+    if "output" not in data:
+        raise ValueError(f"{location}.output field is required.")
+    output = data["output"]
     _validate_json_value(output, f"{location}.output")
 
     latency_ms = _optional_nonnegative_number(data.get("latency_ms"), f"{location}.latency_ms")
@@ -252,7 +254,11 @@ def _parse_grader(data: dict[str, Any], location: str) -> GraderResult:
     score = data.get("score")
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         raise TypeError(f"{location}.score must be numeric.")
-    if not math.isfinite(float(score)):
+    try:
+        numeric_score = float(score)
+    except OverflowError as exc:
+        raise ValueError(f"{location}.score must be finite.") from exc
+    if not math.isfinite(numeric_score):
         raise ValueError(f"{location}.score must be finite.")
 
     details = data.get("details")
@@ -264,7 +270,7 @@ def _parse_grader(data: dict[str, Any], location: str) -> GraderResult:
     return GraderResult(
         grader=name,
         passed=passed,
-        score=float(score),
+        score=numeric_score,
         details=details,
         metadata=metadata,
     )
@@ -275,7 +281,10 @@ def _optional_nonnegative_number(value: Any, location: str) -> float | None:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{location} must be numeric or null.")
-    numeric_value = float(value)
+    try:
+        numeric_value = float(value)
+    except OverflowError as exc:
+        raise ValueError(f"{location} must be finite and non-negative.") from exc
     if not math.isfinite(numeric_value) or numeric_value < 0:
         raise ValueError(f"{location} must be finite and non-negative.")
     return numeric_value
