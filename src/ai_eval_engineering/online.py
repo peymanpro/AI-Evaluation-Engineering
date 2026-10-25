@@ -1,6 +1,7 @@
 """Provider-neutral contracts for online AI evaluation observations."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -24,7 +25,7 @@ class Exposure:
             ("variant", self.variant),
             ("segment", self.segment),
         ):
-            if not value.strip():
+            if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} must not be empty.")
 
 
@@ -41,10 +42,19 @@ class Outcome:
             ("exposure_id", self.exposure_id),
             ("metric", self.metric),
         ):
-            if not value.strip():
+            if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} must not be empty.")
-        if isinstance(self.value, bool) or not isinstance(self.value, (int, float)):
-            raise TypeError("Outcome value must be numeric.")
+        if (
+            isinstance(self.value, bool)
+            or not isinstance(self.value, (int, float))
+        ):
+            raise TypeError("Outcome value must be numeric and finite.")
+        try:
+            finite = math.isfinite(self.value)
+        except OverflowError:
+            finite = False
+        if not finite:
+            raise ValueError("Outcome value must be finite.")
 
 
 @dataclass(frozen=True)
@@ -64,7 +74,7 @@ class VariantMetrics:
     variant: str
     metric: str
     values: tuple[OnlineValue, ...]
-    
+
     @property
     def sample_size(self) -> int:
         return len(self.values)
@@ -176,10 +186,24 @@ class OnlineMetricContract:
     outcome_count: int
 
     def __post_init__(self) -> None:
-        if not self.experiment_id.strip() or not self.metric.strip():
+        if (
+            not isinstance(self.experiment_id, str)
+            or not self.experiment_id.strip()
+            or not isinstance(self.metric, str)
+            or not self.metric.strip()
+        ):
             raise ValueError("Experiment id and metric must not be empty.")
-        if self.exposure_count < 0 or self.outcome_count < 0:
-            raise ValueError("Counts must be non-negative.")
+        if (
+            isinstance(self.exposure_count, bool)
+            or isinstance(self.outcome_count, bool)
+            or self.exposure_count < 0
+            or self.outcome_count < 0
+        ):
+            raise ValueError("Counts must be non-negative integers.")
+        if not isinstance(self.exposure_count, int) or not isinstance(
+            self.outcome_count, int
+        ):
+            raise ValueError("Counts must be non-negative integers.")
 
 
 def build_metric_contract(
@@ -187,6 +211,8 @@ def build_metric_contract(
     outcomes: list[Outcome],
     metric: str,
 ) -> OnlineMetricContract:
+    if not isinstance(metric, str) or not metric.strip():
+        raise ValueError("metric must not be empty.")
     if not exposures and not outcomes:
         raise ValueError("At least one exposure or outcome is required.")
     experiment_ids = {item.experiment_id for item in exposures}
