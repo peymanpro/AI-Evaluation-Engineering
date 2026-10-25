@@ -110,6 +110,9 @@ Evaluation runs already carry cost and latency at the `SystemOutput` level. `Tra
 
 The framework reports trade-offs rather than automatically selecting a single preferred system.
 
+The online evidence assessment checks configured data-integrity rules and minimum sample counts. A `sufficient` state does not prove statistical power, causal validity, or practical significance. Comparisons with fewer than two observations in either group retain their descriptive difference but do not report a bootstrap confidence interval; the interval is `None`, not zero uncertainty.
+
+
 ## Integration boundary
 
 The repository includes provider-neutral adapters for:
