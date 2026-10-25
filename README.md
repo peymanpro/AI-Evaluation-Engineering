@@ -58,6 +58,38 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Failure delta between versions
+
+After collecting failures from two runs, `compare_failure_runs` classifies them as new,
+resolved, or persistent. It refuses comparisons across suite versions, changed test definitions,
+changed case IDs, or different grader sets, so removing a grader cannot masquerade as fixing its
+failures.
+
+```python
+from ai_eval_engineering import compare_failure_runs
+
+delta = compare_failure_runs(baseline_run, candidate_run)
+print(delta.summary())
+print("New regressions:", delta.new_failure_count)
+print("Resolved:", delta.resolved_failure_count)
+print("Still failing:", delta.persistent_failure_count)
+
+for failure in delta.new_failures:
+    print(failure.case.id, failure.grader, failure.latest_details)
+
+for failure in delta.persistent_failures:
+    print(
+        failure.candidate.case.id,
+        failure.candidate.grader,
+        failure.score_delta,  # raw candidate score minus baseline score
+    )
+```
+
+A persistent failure's score delta is descriptive only; whether a score increase is an improvement
+depends on the grader's definition. A failure is classified as resolved only when the corresponding
+grader ran and passed in the candidate. Both runs must use the same system name, suite version,
+case definitions, and per-case grader set.
+
 ## Judge calibration
 
 A judge that agrees with a majority class can still miss a minority class. `calibrate_judge`
