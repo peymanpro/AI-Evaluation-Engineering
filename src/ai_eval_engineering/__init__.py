@@ -57,9 +57,9 @@ from .online import (
     build_metric_contract,
 )
 from .promptfoo import (
+    SUPPORTED_PROMPTFOO_RESULT_VERSION,
     import_promptfoo_payload,
     load_promptfoo_json,
-    SUPPORTED_PROMPTFOO_RESULT_VERSION,
 )
 from .release_gate import (
     MetricGateDecision,
