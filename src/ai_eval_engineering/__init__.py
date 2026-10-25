@@ -13,6 +13,11 @@ from .domain import (
 )
 from .evidence import write_evidence_package
 from .evidence_guardrails import EvidenceAssessment, EvidenceIssue, assess_online_evidence
+from .failure_delta import (
+    FailureDeltaReport,
+    PersistentFailure,
+    compare_failure_runs,
+)
 from .failure_memory import (
     FailureRecord,
     build_failure_regression_suite,
@@ -82,6 +87,7 @@ __all__ = [
     "EvidenceAssessment",
     "EvidenceIssue",
     "Exposure",
+    "FailureDeltaReport",
     "FailureRecord",
     "FakeJudge",
     "GraderResult",
@@ -93,6 +99,7 @@ __all__ = [
     "OnlineMetricContract",
     "OnlineObservation",
     "Outcome",
+    "PersistentFailure",
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
     "RubricDimension",
@@ -108,6 +115,7 @@ __all__ = [
     "building_software_adapter",
     "building_software_suite",
     "calibrate_judge",
+    "compare_failure_runs",
     "evaluate_agent",
     "evaluate_release_candidate",
     "evidence_rag_adapter",

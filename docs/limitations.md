@@ -23,3 +23,5 @@
 - Merged failure records should be processed in chronological run order so first/last-seen history remains meaningful.
 - Judge calibration metrics compare a judge with the supplied human labels; they do not verify that human labels are correct, that the sample represents deployment traffic, or that the judge is fair on unobserved populations. Report per-class metrics and sample counts, especially when label distributions are imbalanced.
 - Macro precision treats undefined per-label precision as zero for labels present in the human reference set. Cohen's kappa is omitted when its expected-agreement denominator is zero.
+- Failure-delta comparison is intentionally strict: both runs must use the same system name, suite version, exact case definitions, and per-case grader names. It does not infer causal root causes; it classifies observed failure state changes only.
+- A persistent failure score delta is candidate score minus baseline score in the grader's raw scale. It is not automatically interpreted as improvement because grader direction and meaning are application-defined.
