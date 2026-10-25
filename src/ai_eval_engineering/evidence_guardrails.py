@@ -160,9 +160,9 @@ def assess_online_evidence(
 
     outcome_ids: set[str] = set()
     for outcome in unique_outcomes:
-        exposure = exposure_by_id.get(outcome.exposure_id)
-        if exposure is not None:
-            sample_sizes[exposure.variant] += 1
+        matched_exposure = exposure_by_id.get(outcome.exposure_id)
+        if matched_exposure is not None:
+            sample_sizes[matched_exposure.variant] += 1
             outcome_ids.add(outcome.exposure_id)
 
     small_variants = sorted(
