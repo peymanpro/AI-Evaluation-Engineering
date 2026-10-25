@@ -6,15 +6,15 @@ test data for sensitive content before writing it to disk.
 """
 from __future__ import annotations
 
-import hashlib
-import json
-import math
-import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import hashlib
+import json
+import math
+import tempfile
 from .domain import EvaluationCase, EvaluationRun, EvaluationSuite
 
 
