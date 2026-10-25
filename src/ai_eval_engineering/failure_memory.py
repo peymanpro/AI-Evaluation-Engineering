@@ -75,6 +75,11 @@ class FailureRecord:
             _case_payload(self.case)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"case definition must be JSON-serializable: {exc}") from exc
+        expected_failure_id = _build_failure_id(
+            self.suite_version, self.system_name, self.case, self.grader
+        )
+        if self.failure_id != expected_failure_id:
+            raise ValueError("failure_id does not match the record's stable identity.")
 
 
 def extract_failure_records(run: EvaluationRun) -> tuple[FailureRecord, ...]:
@@ -149,15 +154,9 @@ def extract_failure_records(run: EvaluationRun) -> tuple[FailureRecord, ...]:
             if grader.passed:
                 continue
 
-            identity = {
-                "suite_version": manifest.suite_version,
-                "system_name": manifest.system_name,
-                "case": case_payload,
-                "grader": grader.grader,
-            }
-            failure_id = hashlib.sha256(
-                _canonical_json(identity, context="failure identity").encode("utf-8")
-            ).hexdigest()[:24]
+            failure_id = _build_failure_id(
+                manifest.suite_version, manifest.system_name, case, grader.grader
+            )
             records.append(
                 FailureRecord(
                     failure_id=failure_id,
@@ -331,6 +330,23 @@ def _case_payload(case: EvaluationCase) -> dict[str, Any]:
         "tags": list(case.tags),
         "risk_category": case.risk_category,
     }
+
+
+def _build_failure_id(
+    suite_version: str,
+    system_name: str,
+    case: EvaluationCase,
+    grader: str,
+) -> str:
+    identity = {
+        "suite_version": suite_version,
+        "system_name": system_name,
+        "case": _case_payload(case),
+        "grader": grader,
+    }
+    return hashlib.sha256(
+        _canonical_json(identity, context="failure identity").encode("utf-8")
+    ).hexdigest()[:24]
 
 
 def _case_signature(case: EvaluationCase) -> str:
