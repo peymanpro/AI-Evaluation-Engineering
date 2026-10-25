@@ -69,5 +69,5 @@ def test_paired_comparison_rejects_empty_populations() -> None:
 
 
 def test_bootstrap_rejects_non_integer_resample_count() -> None:
-    with pytest.raises(ValueError, match="integer"):
+    with pytest.raises(TypeError, match="integer"):
         bootstrap_mean_ci([0.7, 0.8], resamples=100.5)  # type: ignore[arg-type]
