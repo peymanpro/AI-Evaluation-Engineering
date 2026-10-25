@@ -10,7 +10,6 @@ import hashlib
 import json
 import math
 import tempfile
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -176,8 +175,8 @@ def extract_failure_records(run: EvaluationRun) -> tuple[FailureRecord, ...]:
 
 
 def merge_failure_memory(
-    existing: Sequence[FailureRecord],
-    observed: Sequence[FailureRecord],
+    existing: list[FailureRecord] | tuple[FailureRecord, ...],
+    observed: list[FailureRecord] | tuple[FailureRecord, ...],
 ) -> tuple[FailureRecord, ...]:
     """Merge newly observed failures, retaining occurrence history by stable ID.
 
@@ -214,7 +213,7 @@ def merge_failure_memory(
 
 
 def write_failure_memory(
-    records: Sequence[FailureRecord],
+    records: list[FailureRecord] | tuple[FailureRecord, ...],
     path: str | Path,
 ) -> Path:
     """Write versioned JSONL records atomically without persisting model outputs."""
@@ -284,7 +283,7 @@ def read_failure_memory(path: str | Path) -> tuple[FailureRecord, ...]:
 
 
 def build_failure_regression_suite(
-    records: Sequence[FailureRecord],
+    records: list[FailureRecord] | tuple[FailureRecord, ...],
     *,
     version: str,
 ) -> EvaluationSuite:
