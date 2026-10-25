@@ -50,6 +50,34 @@ The framework preserves raw case-level observations so aggregate claims can be i
 
 Generated `artifacts/` output is ignored by Git.
 
+## External evaluation result interchange
+
+External tools can import their completed evaluations through a small, versioned JSON contract.
+Map the tool's run metadata, test cases, observed outputs, and grader results into schema version
+`1`; the importer validates IDs, required fields, numeric values, and JSON-compatible metadata
+before constructing the same `EvaluationRun` objects used by the rest of this package.
+
+```python
+from ai_eval_engineering import load_run_json, write_run_json
+
+# A normalized interchange file exported by an external evaluator:
+candidate = load_run_json("external-results/candidate-run.json")
+
+# Save a validated, canonical copy that another tool can consume:
+write_run_json(candidate, "normalized/candidate-run.json")
+print(candidate.manifest.system_version, len(candidate.cases))
+```
+
+The JSON envelope contains `schema_version`, `manifest`, and `cases`. Each case result contains a
+`case` object, an `output` object, and a non-empty `graders` array. Case IDs and grader names
+must be unique within their required scope; each output's case ID must match its case. Scores must
+be finite numbers, and latency/cost must be finite and non-negative. Nested metadata and outputs
+must contain JSON values only.
+
+This is a provider-neutral interchange format, not a built-in SDK for a particular vendor. The
+external tool or a small tool-specific adapter remains responsible for mapping its fields into the
+documented envelope. Unknown schema versions fail explicitly instead of being guessed.
+
 ## Agent and security evaluation
 
 V1.1 adds a typed trajectory schema with replay validation and separate task-success, step-success, safety, and efficiency signals.
