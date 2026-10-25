@@ -10,8 +10,8 @@ import hashlib
 import json
 import math
 import tempfile
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
