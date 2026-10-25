@@ -15,7 +15,6 @@ from ai_eval_engineering.promptfoo import (
     load_promptfoo_json,
 )
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "promptfoo-v3.json"
 
 
