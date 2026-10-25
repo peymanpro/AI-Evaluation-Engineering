@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from pathlib import Path
 from typing import Any
 
 from .domain import (
@@ -194,7 +195,16 @@ def import_promptfoo_payload(
         response = row.get("response")
         if response is not None:
             response_object = _require_object(response, f"{location}.response")
-            output_value = response_object.get("output", row.get("text"))
+            if "output" in response_object:
+                output_value = response_object["output"]
+            elif "text" in row:
+                output_value = row["text"]
+            elif error:
+                output_value = None
+            else:
+                raise ValueError(
+                    f"{location}.response is missing its output field."
+                )
         elif error:
             # Provider/runtime errors can be valid failed evidence with no output.
             output_value = None
@@ -308,7 +318,7 @@ def import_promptfoo_payload(
 
 
 def load_promptfoo_json(
-    path: str,
+    path: str | Path,
     *,
     system_name: str,
     system_version: str,
@@ -319,7 +329,7 @@ def load_promptfoo_json(
 ) -> EvaluationRun:
     """Load a Promptfoo v3 JSON export from disk and normalize one system slice."""
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with Path(path).open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
     except json.JSONDecodeError as exc:
         raise ValueError(
