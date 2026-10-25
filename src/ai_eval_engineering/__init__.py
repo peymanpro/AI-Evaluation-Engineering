@@ -21,17 +21,6 @@ from .failure_memory import (
     read_failure_memory,
     write_failure_memory,
 )
-from .judge import (
-    CalibrationReport,
-    EvaluationRubric,
-    FakeJudge,
-    Judge,
-    JudgeResult,
-    LabelCalibration,
-    RubricDimension,
-    calibrate_judge,
-    validate_judge_result,
-)
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -42,6 +31,17 @@ from .integrations import (
     how_agents_adapter,
     how_agents_suite,
     run_contract_demo,
+)
+from .judge import (
+    CalibrationReport,
+    EvaluationRubric,
+    FakeJudge,
+    Judge,
+    JudgeResult,
+    LabelCalibration,
+    RubricDimension,
+    calibrate_judge,
+    validate_judge_result,
 )
 from .online import (
     ABResultAdapter,
