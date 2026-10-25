@@ -76,6 +76,7 @@ from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_laten
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
+    "EXTERNAL_RUN_SCHEMA_VERSION",
     "ABResultAdapter",
     "AdversarialCase",
     "AdversarialCategory",
@@ -86,7 +87,6 @@ __all__ = [
     "CaseResult",
     "ConfidenceInterval",
     "ContractAdapter",
-    "EXTERNAL_RUN_SCHEMA_VERSION",
     "EvaluationCase",
     "EvaluationRubric",
     "EvaluationRun",
