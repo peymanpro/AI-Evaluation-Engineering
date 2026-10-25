@@ -50,5 +50,5 @@ def test_tradeoff_rejects_negative_values(field: str) -> None:
 
 
 def test_tradeoff_rejects_boolean_numeric_values() -> None:
-    with pytest.raises(ValueError, match="finite"):
+    with pytest.raises(TypeError, match="numeric"):
         TradeoffObservation("variant", True, 0.02, 100.0)  # type: ignore[arg-type]
