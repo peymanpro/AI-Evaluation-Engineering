@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -219,6 +218,13 @@ def write_failure_memory(
     path: str | Path,
 ) -> Path:
     """Write versioned JSONL records atomically without persisting model outputs."""
+    materialized = tuple(records)
+    if any(not isinstance(record, FailureRecord) for record in materialized):
+        raise TypeError("Failure memory items must be FailureRecord instances.")
+    failure_ids = [record.failure_id for record in materialized]
+    if len(failure_ids) != len(set(failure_ids)):
+        raise ValueError("Failure memory must not contain duplicate failure ids.")
+
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -229,7 +235,7 @@ def write_failure_memory(
             allow_nan=False,
             separators=(",", ":"),
         )
-        for record in records
+        for record in materialized
     ]
     text = "\n".join(lines) + ("\n" if lines else "")
     temporary_path: Path | None = None
