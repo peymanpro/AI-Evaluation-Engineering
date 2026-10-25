@@ -114,3 +114,15 @@ def test_variant_with_no_outcomes_is_counted_as_zero() -> None:
 
     assert assessment.sample_sizes == {"control": 1, "treatment": 0}
     assert "insufficient_sample" in {issue.code for issue in assessment.issues}
+
+
+
+def test_outcomes_without_any_exposures_are_not_marked_sufficient() -> None:
+    outcomes = [Outcome("exp-1", "u-1", "other_metric", 1.0)]
+
+    assessment = assess_online_evidence(
+        [], outcomes, "conversion", min_sample_size=1
+    )
+
+    assert not assessment.sufficient
+    assert "missing_exposure" in {issue.code for issue in assessment.issues}
