@@ -58,6 +58,56 @@ The committed `data/adversarial.json` suite is intentionally compact and human-r
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
 
+## Decision-grade release evaluation
+
+Use `evaluate_release_candidate` when you need more than a threshold-only regression check.
+It compares recorded baseline and candidate runs on the same versioned suite, requires the same
+case IDs and case definitions, aligns each grader score by case ID, and uses a paired bootstrap
+interval to avoid treating matched cases as independent samples.
+
+```python
+from ai_eval_engineering import ReleaseMetricPolicy, evaluate_release_candidate
+
+decision = evaluate_release_candidate(
+    baseline_run,
+    candidate_run,
+    [
+        ReleaseMetricPolicy(
+            "task_success",
+            direction="higher_is_better",
+            max_allowed_regression=0.01,
+            min_cases=30,
+        ),
+        ReleaseMetricPolicy(
+            "latency_ms",
+            direction="lower_is_better",
+            max_allowed_regression=25.0,
+            min_cases=30,
+        ),
+    ],
+    confidence=0.95,
+    resamples=2000,
+    seed=7,
+)
+
+print(decision.status)  # PASS / FAIL / INCONCLUSIVE / INVALID_EVIDENCE
+print(decision.summary())
+```
+
+The release status is conservative: `PASS` means every configured metric's paired-bootstrap
+interval stays within its allowed-regression tolerance on these evaluated cases; `FAIL` means
+at least one metric's interval is beyond its tolerance; `INCONCLUSIVE` means the result overlaps
+a tolerance boundary or the configured minimum case count is not met; `INVALID_EVIDENCE` means
+the runs could not be compared safely (for example, a suite/version mismatch, changed case inputs,
+unmatched case IDs, or missing metric results).
+
+When several metric policies are evaluated together, the engine applies a Bonferroni adjustment to the requested confidence level across those metrics. This is conservative; because the intervals use a percentile bootstrap, coverage remains approximate rather than a formal guarantee.
+
+A `PASS` is not a production-wide quality guarantee, a formal power analysis, or proof of causal
+impact. It depends on the supplied evaluation cases, score semantics, confidence level, and
+paired-bootstrap assumptions. The metric name must identify a numeric grader score recorded for
+every case in both runs.
+
 ## Direction-aware regression gates
 
 Release-gate rules can explicitly state whether a metric should increase or decrease. The default
