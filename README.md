@@ -101,6 +101,8 @@ a tolerance boundary or the configured minimum case count is not met; `INVALID_E
 the runs could not be compared safely (for example, a suite/version mismatch, changed case inputs,
 unmatched case IDs, or missing metric results).
 
+When several metric policies are evaluated together, the engine applies a Bonferroni adjustment to the requested confidence level across those metrics. This is conservative; because the intervals use a percentile bootstrap, coverage remains approximate rather than a formal guarantee.
+
 A `PASS` is not a production-wide quality guarantee, a formal power analysis, or proof of causal
 impact. It depends on the supplied evaluation cases, score semantics, confidence level, and
 paired-bootstrap assumptions. The metric name must identify a numeric grader score recorded for
