@@ -143,7 +143,7 @@ def _validate_values(values: list[float], *, name: str) -> list[float]:
     checked: list[float] = []
     for index, value in enumerate(values):
         if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError(f"{name}[{index}] must be a finite number.")
+            raise TypeError(f"{name}[{index}] must be numeric.")
         try:
             converted = float(value)
         except OverflowError as exc:
@@ -156,14 +156,16 @@ def _validate_values(values: list[float], *, name: str) -> list[float]:
 
 def _validate_bootstrap_options(confidence: float, resamples: int) -> None:
     if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
-        raise ValueError("confidence must be a finite number between 0 and 1.")
+        raise TypeError("confidence must be numeric.")
     try:
         confidence_value = float(confidence)
     except OverflowError as exc:
         raise ValueError("confidence must be a finite number between 0 and 1.") from exc
     if not math.isfinite(confidence_value) or not 0.0 < confidence_value < 1.0:
         raise ValueError("confidence must be a finite number between 0 and 1.")
-    if isinstance(resamples, bool) or not isinstance(resamples, int) or resamples < 100:
+    if isinstance(resamples, bool) or not isinstance(resamples, int):
+        raise TypeError("resamples must be an integer.")
+    if resamples < 100:
         raise ValueError("resamples must be an integer of at least 100.")
 
 
