@@ -66,6 +66,8 @@ def bootstrap_mean_ci(
 def paired_compare(baseline: list[float], candidate: list[float]) -> PairedComparison:
     baseline_checked = _validate_values(baseline, name="baseline")
     candidate_checked = _validate_values(candidate, name="candidate")
+    if not baseline_checked or not candidate_checked:
+        raise ValueError("Both populations require at least one value.")
     if len(baseline_checked) != len(candidate_checked):
         raise ValueError("Paired comparison requires equal population sizes.")
     differences = [
@@ -153,12 +155,13 @@ def _validate_values(values: list[float], *, name: str) -> list[float]:
 
 
 def _validate_bootstrap_options(confidence: float, resamples: int) -> None:
-    if (
-        isinstance(confidence, bool)
-        or not isinstance(confidence, (int, float))
-        or not math.isfinite(float(confidence))
-        or not 0.0 < confidence < 1.0
-    ):
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+        raise ValueError("confidence must be a finite number between 0 and 1.")
+    try:
+        confidence_value = float(confidence)
+    except OverflowError as exc:
+        raise ValueError("confidence must be a finite number between 0 and 1.") from exc
+    if not math.isfinite(confidence_value) or not 0.0 < confidence_value < 1.0:
         raise ValueError("confidence must be a finite number between 0 and 1.")
     if isinstance(resamples, bool) or not isinstance(resamples, int) or resamples < 100:
         raise ValueError("resamples must be an integer of at least 100.")
