@@ -62,6 +62,13 @@ from .release_gate import (
     ReleaseMetricPolicy,
     evaluate_release_candidate,
 )
+from .result_import import (
+    EXTERNAL_RUN_SCHEMA_VERSION,
+    export_run_payload,
+    import_run_payload,
+    load_run_json,
+    write_run_json,
+)
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
@@ -69,6 +76,7 @@ from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_laten
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
+    "EXTERNAL_RUN_SCHEMA_VERSION",
     "ABResultAdapter",
     "AdversarialCase",
     "AdversarialCategory",
@@ -120,9 +128,12 @@ __all__ = [
     "evaluate_release_candidate",
     "evidence_rag_adapter",
     "evidence_rag_suite",
+    "export_run_payload",
     "extract_failure_records",
     "how_agents_adapter",
     "how_agents_suite",
+    "import_run_payload",
+    "load_run_json",
     "merge_failure_memory",
     "paired_bootstrap_difference_ci",
     "quality_cost_frontier",
@@ -133,4 +144,5 @@ __all__ = [
     "validate_judge_result",
     "write_evidence_package",
     "write_failure_memory",
+    "write_run_json",
 ]
