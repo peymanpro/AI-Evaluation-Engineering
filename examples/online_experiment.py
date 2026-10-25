@@ -45,10 +45,14 @@ def main() -> None:
         json.dumps(
             {
                 "overall_difference": overall.mean_difference,
-                "confidence_interval": {
-                    "lower": overall.confidence_interval.lower,
-                    "upper": overall.confidence_interval.upper,
-                },
+                "confidence_interval": (
+                    {
+                        "lower": overall.confidence_interval.lower,
+                        "upper": overall.confidence_interval.upper,
+                    }
+                    if overall.confidence_interval is not None
+                    else None
+                ),
                 "segments": {
                     segment: comparison.mean_difference
                     for segment, comparison in segments.items()
