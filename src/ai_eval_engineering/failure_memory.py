@@ -308,6 +308,18 @@ def build_failure_regression_suite(
 
 
 def _case_payload(case: EvaluationCase) -> dict[str, Any]:
+    if not isinstance(case.id, str) or not case.id.strip():
+        raise ValueError("case id must not be empty.")
+    if not isinstance(case.input, dict):
+        raise ValueError("case input must be a JSON object.")
+    if not isinstance(case.metadata, dict):
+        raise ValueError("case metadata must be a JSON object.")
+    if not isinstance(case.tags, (tuple, list)) or any(
+        not isinstance(tag, str) for tag in case.tags
+    ):
+        raise ValueError("case tags must be a sequence of strings.")
+    if case.risk_category is not None and not isinstance(case.risk_category, str):
+        raise ValueError("case risk_category must be a string or null.")
     return {
         "id": case.id,
         "input": case.input,
