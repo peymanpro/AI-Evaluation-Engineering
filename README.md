@@ -90,6 +90,49 @@ Promptfoo JSON exports may contain raw model output, prompts, variables, configu
 other sensitive data. Review the source file and protect imported artifacts before committing or
 sharing them.
 
+## Promptfoo baseline vs candidate workflow
+
+`examples/promptfoo_release_workflow.py` joins the Promptfoo adapter to both existing
+comparison APIs: `evaluate_release_candidate` makes a paired-bootstrap release decision, and
+`compare_failure_runs` identifies newly failing, resolved, and persistent case/grader pairs.
+
+Run the deterministic CI demonstration:
+
+```bash
+python examples/promptfoo_release_workflow.py
+```
+
+The committed baseline/candidate files are **synthetic Promptfoo-v3-shaped fixtures**, not results
+captured from a real model provider. They demonstrate a known regression so the tests can verify
+that the release gate returns `FAIL` and that the failure delta reports 11 new, 2 resolved, and
+4 persistent failures. No network or model calls occur.
+
+To compare your own Promptfoo v3 exports:
+
+```bash
+python examples/promptfoo_release_workflow.py baseline.json candidate.json \
+  --system-name support-assistant \
+  --baseline-version git:abc123 \
+  --candidate-version git:def456 \
+  --suite-version support-suite-v2 \
+  --provider-id 'openai:chat:example-model' \
+  --prompt-idx 0 \
+  --min-cases 30 \
+  --max-allowed-regression 0.02
+```
+
+The same `suite-version` must describe the same case definitions in both files. Choose the
+`system-version` values yourself; provider and prompt identifiers are not sufficient to identify
+a deployment revision. The release metric named `promptfoo` uses the row-level Promptfoo
+`score`; named scores remain preserved in grader metadata and are not automatically registered as
+separate release metrics.
+
+By default, the example prints the decision without rejecting a candidate solely because the
+decision is `FAIL` or `INCONCLUSIVE`. Add `--enforce-gate` in a CI/CD invocation to return
+exit code 1 for those decisions. Invalid evidence or incompatible runs return exit code 2. Review
+raw prompts, test variables, expected answers, and outputs for sensitive information before
+sharing exported JSON files or their generated reports.
+
 ## External evaluation result interchange
 
 External tools can import their completed evaluations through a small, versioned JSON contract.
