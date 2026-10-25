@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from ai_eval_engineering.online import (
@@ -91,3 +93,27 @@ def test_metric_contract_requires_one_experiment() -> None:
     assert contract.experiment_id == "exp-1"
     assert contract.exposure_count == 2
     assert contract.outcome_count == 2
+
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_outcome_rejects_non_finite_values(value: float) -> None:
+    with pytest.raises(ValueError, match="finite"):
+        Outcome("exp-1", "u-1", "latency_ms", value)
+
+
+def test_outcome_rejects_boolean_as_numeric_value() -> None:
+    with pytest.raises(TypeError, match="numeric"):
+        Outcome("exp-1", "u-1", "success", True)  # type: ignore[arg-type]
+
+
+def test_exposure_rejects_non_string_identifiers() -> None:
+    with pytest.raises(ValueError, match="experiment_id"):
+        Exposure(None, "u-1", "control", "all")  # type: ignore[arg-type]
+
+
+def test_metric_contract_rejects_non_integer_counts() -> None:
+    from ai_eval_engineering.online import OnlineMetricContract
+
+    with pytest.raises(ValueError, match="non-negative integers"):
+        OnlineMetricContract("exp-1", "conversion", 1.5, 2)  # type: ignore[arg-type]
