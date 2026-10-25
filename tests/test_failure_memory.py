@@ -196,7 +196,7 @@ def test_reader_rejects_tampered_failure_identity(tmp_path: Path) -> None:
     write_failure_memory((record,), path)
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["failure_id"] = "tampered-id"
-    path.write_text(json.dumps(payload) + "\\n", encoding="utf-8")
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="stable identity"):
         read_failure_memory(path)
