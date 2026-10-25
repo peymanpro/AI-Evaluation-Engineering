@@ -1,4 +1,9 @@
-"""Guardrails for deciding whether online evidence is sufficient to interpret."""
+"""Guardrails for configured online-evidence checks.
+
+A passing assessment means the supplied data passed these explicit checks. It
+does not, by itself, establish statistical power, causal validity, or that an
+observed effect is practically meaningful.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,6 +14,9 @@ from .online import Exposure, Outcome
 EvidenceIssueCode = Literal[
     "insufficient_sample",
     "overlapping_population",
+    "duplicate_exposure",
+    "duplicate_outcome",
+    "unmatched_outcome",
     "missing_outcome",
     "missing_ground_truth",
     "selection_bias",
@@ -23,12 +31,15 @@ class EvidenceIssue:
 
 @dataclass(frozen=True)
 class EvidenceAssessment:
+    """Result of the configured checks, not a universal guarantee of sufficiency."""
+
     state: Literal["sufficient", "insufficient"]
     sample_sizes: dict[str, int]
     issues: tuple[EvidenceIssue, ...]
 
     @property
     def sufficient(self) -> bool:
+        """Whether configured guardrails passed; not a statistical-power claim."""
         return self.state == "sufficient"
 
 
@@ -42,61 +53,134 @@ def assess_online_evidence(
     ground_truth_available: bool = False,
     selection_bias_detected: bool = False,
 ) -> EvidenceAssessment:
-    if min_sample_size < 1:
-        raise ValueError("min_sample_size must be at least 1.")
+    """Assess data integrity and configured minimums for one experiment/metric.
+
+    Duplicate or unmatched records are reported as evidence issues instead of
+    silently inflating counts or disappearing from the assessment. Passing the
+    configured minimum is not a substitute for a power analysis or a suitable
+    statistical comparison.
+    """
+    if not isinstance(metric, str) or not metric.strip():
+        raise ValueError("metric must not be empty.")
+    if (
+        isinstance(min_sample_size, bool)
+        or not isinstance(min_sample_size, int)
+        or min_sample_size < 1
+    ):
+        raise ValueError("min_sample_size must be a positive integer.")
+
     experiments = {item.experiment_id for item in exposures}
     experiments.update(item.experiment_id for item in outcomes)
     if len(experiments) != 1:
-        raise ValueError("All online evidence must belong to one experiment.")
+        raise ValueError("All evidence must belong to exactly one experiment.")
 
-    filtered_outcomes = [item for item in outcomes if item.metric == metric]
-    exposure_by_id = {item.exposure_id: item for item in exposures}
-    outcome_ids = {item.exposure_id for item in filtered_outcomes}
-
-    sample_sizes: dict[str, int] = {}
-    for outcome in filtered_outcomes:
-        exposure = exposure_by_id.get(outcome.exposure_id)
-        if exposure is not None:
-            sample_sizes[exposure.variant] = sample_sizes.get(exposure.variant, 0) + 1
+    exposures_by_id: dict[str, list[Exposure]] = {}
+    for exposure in exposures:
+        exposures_by_id.setdefault(exposure.exposure_id, []).append(exposure)
 
     issues: list[EvidenceIssue] = []
+    exposure_by_id: dict[str, Exposure] = {}
+    duplicate_exposure_ids: list[str] = []
+    overlapping_ids: list[str] = []
+
+    for exposure_id, records in sorted(exposures_by_id.items()):
+        exposure_by_id[exposure_id] = records[0]
+        variants = {record.variant for record in records}
+        if len(variants) > 1:
+            overlapping_ids.append(exposure_id)
+        elif len(records) > 1:
+            duplicate_exposure_ids.append(exposure_id)
+
+    if overlapping_ids:
+        issues.append(
+            EvidenceIssue(
+                "overlapping_population",
+                "exposure ids assigned to multiple variants: "
+                + ", ".join(overlapping_ids),
+            )
+        )
+    if duplicate_exposure_ids:
+        issues.append(
+            EvidenceIssue(
+                "duplicate_exposure",
+                "exposure ids occur more than once: "
+                + ", ".join(duplicate_exposure_ids),
+            )
+        )
+
+    metric_outcomes: dict[str, list[Outcome]] = {}
+    for outcome in outcomes:
+        if outcome.metric == metric:
+            metric_outcomes.setdefault(outcome.exposure_id, []).append(outcome)
+
+    duplicate_outcome_ids = sorted(
+        exposure_id
+        for exposure_id, records in metric_outcomes.items()
+        if len(records) > 1
+    )
+    if duplicate_outcome_ids:
+        issues.append(
+            EvidenceIssue(
+                "duplicate_outcome",
+                f"multiple {metric!r} outcomes for exposure ids: "
+                + ", ".join(duplicate_outcome_ids),
+            )
+        )
+
+    unique_outcomes = [
+        records[0] for _, records in sorted(metric_outcomes.items())
+    ]
+    unmatched_outcome_ids = sorted(
+        outcome.exposure_id
+        for outcome in unique_outcomes
+        if outcome.exposure_id not in exposure_by_id
+    )
+    if unmatched_outcome_ids:
+        issues.append(
+            EvidenceIssue(
+                "unmatched_outcome",
+                "outcomes reference unknown exposure ids: "
+                + ", ".join(unmatched_outcome_ids),
+            )
+        )
+
+    # Count each known exposure at most once. Start all observed variants at
+    # zero, so an arm with no usable outcomes cannot vanish from sample checks.
+    sample_sizes: dict[str, int] = {}
+    for exposure in exposure_by_id.values():
+        sample_sizes.setdefault(exposure.variant, 0)
+
+    outcome_ids: set[str] = set()
+    for outcome in unique_outcomes:
+        exposure = exposure_by_id.get(outcome.exposure_id)
+        if exposure is not None:
+            sample_sizes[exposure.variant] += 1
+            outcome_ids.add(outcome.exposure_id)
+
     small_variants = sorted(
         variant for variant, size in sample_sizes.items() if size < min_sample_size
     )
     if small_variants:
+        details = ", ".join(
+            f"{variant} (n={sample_sizes[variant]})" for variant in small_variants
+        )
         issues.append(
             EvidenceIssue(
                 "insufficient_sample",
-                f"variants below minimum sample size: {', '.join(small_variants)}",
-            )
-        )
-
-    variants_by_exposure: dict[str, set[str]] = {}
-    for exposure in exposures:
-        variants_by_exposure.setdefault(exposure.exposure_id, set()).add(exposure.variant)
-    overlapping = sorted(
-        exposure_id
-        for exposure_id, variants in variants_by_exposure.items()
-        if len(variants) > 1
-    )
-    if overlapping:
-        issues.append(
-            EvidenceIssue(
-                "overlapping_population",
-                f"exposure ids assigned to multiple variants: {', '.join(overlapping)}",
+                f"variants below configured minimum n={min_sample_size}: {details}",
             )
         )
 
     missing_outcomes = sorted(
-        exposure.exposure_id
-        for exposure in exposures
-        if exposure.exposure_id not in outcome_ids
+        exposure_id
+        for exposure_id in exposure_by_id
+        if exposure_id not in outcome_ids
     )
     if missing_outcomes:
         issues.append(
             EvidenceIssue(
                 "missing_outcome",
-                f"exposures without {metric!r} outcomes: {', '.join(missing_outcomes)}",
+                f"exposures without {metric!r} outcomes: " + ", ".join(missing_outcomes),
             )
         )
 
