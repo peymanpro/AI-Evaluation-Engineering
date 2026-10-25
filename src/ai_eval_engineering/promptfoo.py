@@ -390,7 +390,7 @@ def _require_index(value: Any, location: str) -> int:
         raise TypeError(f"{location} must be a non-negative integer.")
     if value < 0:
         raise ValueError(f"{location} must be a non-negative integer.")
-    return value
+    return int(value)
 
 
 def _require_nonempty_string(value: Any, location: str) -> str:
