@@ -91,6 +91,7 @@ jobs:
           python examples/security_regression.py
           python examples/tradeoffs.py
           python examples/integrations.py
+          python examples/promptfoo_release_workflow.py
 
       - name: Build distributions
         if: steps.version.outputs.skip != 'true'
