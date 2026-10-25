@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .domain import CaseResult, EvaluationRun
+from .domain import EvaluationRun
 from .failure_memory import FailureRecord, extract_failure_records
 
 
