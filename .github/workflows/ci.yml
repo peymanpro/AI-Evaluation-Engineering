@@ -31,3 +31,5 @@ jobs:
         run: python examples/tradeoffs.py
       - name: Integration contract demo
         run: python examples/integrations.py
+      - name: Promptfoo release workflow demo
+        run: python examples/promptfoo_release_workflow.py

@@ -1,0 +1,1704 @@
+{
+  "evalId": "synthetic-baseline-30",
+  "shareableUrl": null,
+  "results": {
+    "version": 3,
+    "timestamp": "2026-10-26T00:00:00Z",
+    "stats": {
+      "successes": 24,
+      "failures": 6,
+      "errors": 0
+    },
+    "prompts": [
+      {
+        "id": "prompt-hash-arithmetic-v1",
+        "raw": "Answer: {{question}}"
+      }
+    ],
+    "results": [
+      {
+        "id": "row-0-openai-p0",
+        "testIdx": 0,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 1 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 1
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 1 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 2
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 10,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-1-openai-p0",
+        "testIdx": 1,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 2 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 2
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 2 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 3
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 11,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-2-openai-p0",
+        "testIdx": 2,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 3 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 3
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 3 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 4
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 12,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-3-openai-p0",
+        "testIdx": 3,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 4 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 4
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 4 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 5
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 13,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-4-openai-p0",
+        "testIdx": 4,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 5 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 5
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 5 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 6
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 14,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-5-openai-p0",
+        "testIdx": 5,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 6 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 6
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 6 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 7
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 15,
+        "success": false,
+        "score": 0,
+        "gradingResult": {
+          "pass": false,
+          "score": 0,
+          "reason": "Expected answer did not match"
+        },
+        "namedScores": {
+          "correctness": 0
+        },
+        "failureReason": 1
+      },
+      {
+        "id": "row-6-openai-p0",
+        "testIdx": 6,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 7 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 7
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 7 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 7
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 16,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-7-openai-p0",
+        "testIdx": 7,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 8 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 8
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 8 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 8
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 17,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-8-openai-p0",
+        "testIdx": 8,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 9 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 9
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 9 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 9
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 18,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-9-openai-p0",
+        "testIdx": 9,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 10 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 10
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 10 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 10
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 19,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-10-openai-p0",
+        "testIdx": 10,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 11 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 11
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 11 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 11
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 20,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-11-openai-p0",
+        "testIdx": 11,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 12 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 12
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 12 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 12
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 21,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-12-openai-p0",
+        "testIdx": 12,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 13 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 13
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 13 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 13
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 22,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-13-openai-p0",
+        "testIdx": 13,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 14 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 14
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 14 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 14
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 23,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-14-openai-p0",
+        "testIdx": 14,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 15 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 15
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 15 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 15
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 24,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-15-openai-p0",
+        "testIdx": 15,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 16 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 16
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 16 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 16
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 25,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-16-openai-p0",
+        "testIdx": 16,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 17 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 17
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 17 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 17
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 26,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-17-openai-p0",
+        "testIdx": 17,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 18 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 18
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 18 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 18
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 27,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-18-openai-p0",
+        "testIdx": 18,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 19 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 19
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 19 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 19
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 28,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-19-openai-p0",
+        "testIdx": 19,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 20 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 20
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 20 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 20
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 29,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-20-openai-p0",
+        "testIdx": 20,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 21 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 21
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 21 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 21
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 30,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-21-openai-p0",
+        "testIdx": 21,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 22 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 22
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 22 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 22
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 31,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-22-openai-p0",
+        "testIdx": 22,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 23 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 23
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 23 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 23
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 32,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-23-openai-p0",
+        "testIdx": 23,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 24 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 24
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 24 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 24
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 33,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-24-openai-p0",
+        "testIdx": 24,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 25 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 25
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 25 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 25
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 34,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-25-openai-p0",
+        "testIdx": 25,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 26 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 26
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 26 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 26
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 35,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-26-openai-p0",
+        "testIdx": 26,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 27 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 27
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 27 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 27
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 36,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-27-openai-p0",
+        "testIdx": 27,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 28 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 28
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 28 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 28
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 37,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-28-openai-p0",
+        "testIdx": 28,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 29 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 29
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 29 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 29
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 38,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      },
+      {
+        "id": "row-29-openai-p0",
+        "testIdx": 29,
+        "promptIdx": 0,
+        "promptId": "prompt-hash-arithmetic-v1",
+        "provider": {
+          "id": "openai:mock:answerer",
+          "label": "Synthetic Promptfoo fixture"
+        },
+        "testCase": {
+          "vars": {
+            "question": "What is 30 + 1?"
+          },
+          "assert": [
+            {
+              "type": "equals",
+              "value": {
+                "answer": 30
+              }
+            }
+          ],
+          "options": {},
+          "metadata": {
+            "tags": [
+              "arithmetic",
+              "release-gate-fixture"
+            ],
+            "scenario": "integer-addition"
+          }
+        },
+        "vars": {
+          "question": "What is 30 + 1?"
+        },
+        "response": {
+          "output": {
+            "answer": 30
+          },
+          "cost": 0.001,
+          "tokenUsage": {
+            "total": 12
+          }
+        },
+        "cost": 0.001,
+        "latencyMs": 39,
+        "success": true,
+        "score": 1,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "Expected answer matched"
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "failureReason": 0
+      }
+    ]
+  },
+  "config": {
+    "description": "Synthetic Promptfoo v3 fixture for deterministic CI; no provider calls or real user data."
+  }
+}
