@@ -6,7 +6,7 @@ import json
 import math
 from typing import Any
 
-from .domain import EvaluationCase, SystemOutput
+from .domain import EvaluationCase, GraderResult, SystemOutput
 from .judge import (
     EvaluationRubric,
     JudgeResult,
@@ -287,3 +287,52 @@ def _response_metadata(response: Any, requested_model: str) -> dict[str, Any]:
         if usage_metadata:
             metadata["usage"] = usage_metadata
     return metadata
+
+class OpenAIJudgeGrader:
+    """Adapt an LLM judge to the `EvaluationRunner` grader contract.
+
+    Only labels listed in `pass_labels` set `GraderResult.passed` to true.
+    This mapping is explicit because natural-language labels are application-
+    specific; the numeric judge score is retained independently.
+    """
+
+    def __init__(
+        self,
+        judge: OpenAICompatibleJudge,
+        rubric: EvaluationRubric,
+        *,
+        name: str = "llm_judge",
+        pass_labels: tuple[str, ...] = ("pass", "passed"),
+    ) -> None:
+        if not isinstance(judge, OpenAICompatibleJudge):
+            raise TypeError("judge must be an OpenAICompatibleJudge.")
+        _validate_rubric(rubric)
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        if not isinstance(pass_labels, tuple) or not pass_labels:
+            raise ValueError("pass_labels must be a non-empty tuple of strings.")
+        normalized_labels: set[str] = set()
+        for label in pass_labels:
+            if not isinstance(label, str) or not label.strip():
+                raise ValueError("pass_labels must contain non-empty strings.")
+            normalized_labels.add(label.strip().casefold())
+        self.judge_client = judge
+        self.rubric = rubric
+        self.name = name
+        self.pass_labels = frozenset(normalized_labels)
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        """Evaluate one case/output pair and return a runner-compatible grader result."""
+        result = self.judge_client.judge(case, output, self.rubric)
+        return GraderResult(
+            grader=self.name,
+            passed=result.label.strip().casefold() in self.pass_labels,
+            score=result.score,
+            details=result.rationale,
+            metadata={
+                **result.metadata,
+                "judge_label": result.label,
+                "dimension_scores": result.dimension_scores,
+                "rubric": self.rubric.name,
+            },
+        )
