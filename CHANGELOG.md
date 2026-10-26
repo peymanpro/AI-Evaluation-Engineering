@@ -6,6 +6,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 
 ### Added
 - Bounded-concurrency asynchronous evaluation runner with stable suite-order results, shared synchronous graders, and fail-fast cancellation semantics.
+- Optional per-case async adapter deadlines with cancellation and explicit failure instead of an indefinitely blocked run.
 
 ## 0.2.0 - 2026-10-26
 
