@@ -275,7 +275,7 @@ class AsyncEvaluationRunner:
                 raise
 
         ordered_completed = tuple(
-            cast(CaseResult, result) for result in results if result is not None
+            result for result in results if result is not None
         )
         pending_case_ids = tuple(
             case.id
