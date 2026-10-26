@@ -60,6 +60,7 @@ The framework preserves raw case-level observations so aggregate claims can be i
     python examples/integrations.py
     python examples/promptfoo_release_workflow.py
     python examples/async_evaluation.py
+    python examples/deterministic_graders.py
 
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
