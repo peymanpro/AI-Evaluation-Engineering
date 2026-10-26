@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from copy import deepcopy
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -273,9 +274,15 @@ class JsonFieldGrader:
             if re.search(r"~(?![01])", token):
                 raise ValueError("path contains an invalid JSON Pointer escape.")
             tokens.append(token.replace("~1", "/").replace("~0", "~"))
+        if expected_value is not _JSON_FIELD_UNSET and not _is_json_value(expected_value):
+            raise ValueError("expected_value must be a finite JSON-compatible value.")
         self.name = name
         self.path = path
-        self.expected_value = expected_value
+        self.expected_value = (
+            deepcopy(expected_value)
+            if expected_value is not _JSON_FIELD_UNSET
+            else _JSON_FIELD_UNSET
+        )
         self._tokens = tuple(tokens)
 
     def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
@@ -324,6 +331,26 @@ def _resolve_json_pointer(value: Any, tokens: tuple[str, ...]) -> Any:
         else:
             return _JSON_FIELD_MISSING
     return current
+
+
+def _is_json_value(value: Any, ancestors: set[int] | None = None) -> bool:
+    if value is None or isinstance(value, (str, bool, int)):
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if not isinstance(value, (list, dict)):
+        return False
+    active = set() if ancestors is None else ancestors
+    identity = id(value)
+    if identity in active:
+        return False
+    active.add(identity)
+    if isinstance(value, list):
+        valid = all(_is_json_value(item, active) for item in value)
+    else:
+        valid = all(isinstance(key, str) and _is_json_value(item, active) for key, item in value.items())
+    active.remove(identity)
+    return valid
 
 
 def _json_values_equal(actual: Any, expected: Any) -> bool:
