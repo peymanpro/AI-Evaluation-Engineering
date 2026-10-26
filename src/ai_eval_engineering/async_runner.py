@@ -30,7 +30,7 @@ from .domain import (
     SystemOutput,
 )
 from .retry import RetryPolicy, validate_retry_policy_manifest
-from .runner import Grader
+from .runner import BudgetedGrader, Grader
 
 
 class AsyncSystemAdapter(Protocol):
@@ -469,7 +469,7 @@ class AsyncEvaluationRunner:
                         f"on case {case.id!r}",
                     )
                     break
-                budget_grade = getattr(grader, "grade_with_budget")
+                budget_grade = cast(BudgetedGrader, grader).grade_with_budget
                 try:
                     grader_result = budget_grade(
                         case, output, max_cost_usd=remaining_case_budget
