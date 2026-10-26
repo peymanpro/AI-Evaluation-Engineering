@@ -898,8 +898,10 @@ class _ReservedBudgetController:
         """Keep the strongest evidence-based conclusion regardless of async timing."""
         priority: dict[ReservedBudgetStatus, int] = {
             "COMPLETED": 0,
-            "INCOMPLETE_BUDGET_EVIDENCE": 1,
-            "BUDGET_LIMIT_REACHED": 2,
+            "BUDGET_LIMIT_REACHED": 1,
+            # Unknown actual spend must not be hidden by another concurrent
+            # case independently reaching the scheduling threshold.
+            "INCOMPLETE_BUDGET_EVIDENCE": 2,
             "INVALID_BUDGET_EVIDENCE": 3,
             "REQUEST_CAP_VIOLATED": 4,
         }
