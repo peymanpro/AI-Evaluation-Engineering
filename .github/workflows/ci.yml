@@ -29,6 +29,11 @@ jobs:
         run: ai-eval --help
       - name: Evaluation CLI schema
         run: ai-eval schema > /tmp/external-run-v1.schema.json && python -c 'import json; schema=json.load(open("/tmp/external-run-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1'
+      - name: Evaluation suite schema
+        run: |
+          ai-eval suite-schema > /tmp/evaluation-suite-v1.schema.json
+          python -c 'import json; schema=json.load(open("/tmp/evaluation-suite-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1'
+          ai-eval validate-suite examples/suites/support-smoke-v1.json
       - name: Core demo
         run: ai-eval-demo
       - name: Online evaluation demo

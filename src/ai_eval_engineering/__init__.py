@@ -89,10 +89,19 @@ from .result_import import (
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
+from .suite_io import (
+    EVALUATION_SUITE_SCHEMA_VERSION,
+    export_suite_payload,
+    get_evaluation_suite_schema,
+    import_suite_payload,
+    load_suite_json,
+    write_suite_json,
+)
 from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_latency_frontier
 from .trajectory import Trajectory, TrajectoryEvent
 
 __all__ = [
+    "EVALUATION_SUITE_SCHEMA_VERSION",
     "EXTERNAL_RUN_SCHEMA_VERSION",
     "SUPPORTED_PROMPTFOO_RESULT_VERSION",
     "ABResultAdapter",
@@ -160,14 +169,18 @@ __all__ = [
     "evidence_rag_adapter",
     "evidence_rag_suite",
     "export_run_payload",
+    "export_suite_payload",
     "extract_failure_records",
+    "get_evaluation_suite_schema",
     "get_external_run_schema",
     "how_agents_adapter",
     "how_agents_suite",
     "import_promptfoo_payload",
     "import_run_payload",
+    "import_suite_payload",
     "load_promptfoo_json",
     "load_run_json",
+    "load_suite_json",
     "merge_failure_memory",
     "paired_bootstrap_difference_ci",
     "quality_cost_frontier",
@@ -181,4 +194,5 @@ __all__ = [
     "write_evidence_package",
     "write_failure_memory",
     "write_run_json",
+    "write_suite_json",
 ]

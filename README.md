@@ -7,6 +7,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 ## What the library provides
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
+- versioned JSON suite files with strict import/export validation, reusable datasets, and a packaged schema;
 - reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
@@ -93,6 +94,37 @@ ai-eval budget candidate.json \
 gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
 for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
 returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
+
+## Versioned evaluation suites
+
+Keep test cases in a reusable, reviewable JSON file rather than rebuilding every suite in Python.
+Version 1 suite files include a suite version and case IDs, inputs, expected values, tags, metadata,
+and optional risk categories. The importer rejects unknown fields, unsupported schema versions,
+duplicate case IDs, and invalid/non-finite JSON evidence.
+
+The repository includes a small [suite JSON example](examples/suites/support-smoke-v1.json). Validate
+it from the command line:
+
+```bash
+ai-eval validate-suite examples/suites/support-smoke-v1.json
+ai-eval suite-schema > evaluation-suite-v1.schema.json
+```
+
+Load the same dataset from Python and pass it to either runner:
+
+```python
+from ai_eval_engineering import load_suite_json, write_suite_json
+
+suite = load_suite_json("examples/suites/support-smoke-v1.json")
+print(suite.version, len(suite.cases))
+
+# Export a modified suite using an atomic file replacement.
+write_suite_json(suite, "data/support-suite-v1.json")
+```
+
+The packaged schema can also be retrieved with `get_evaluation_suite_schema()`. A suite file defines
+cases and evidence contracts, not the executable system adapter or graders; configure those in code
+so loading data never executes arbitrary Python.
 
 ## Input contract validation
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
 from .result_import import get_external_run_schema, load_run_json
+from .suite_io import get_evaluation_suite_schema, load_suite_json
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -34,6 +35,17 @@ def _parser() -> argparse.ArgumentParser:
         "schema",
         help="print the packaged external-run JSON Schema",
     )
+
+    commands.add_parser(
+        "suite-schema",
+        help="print the packaged evaluation-suite JSON Schema",
+    )
+
+    validate_suite = commands.add_parser(
+        "validate-suite",
+        help="validate a versioned evaluation-suite JSON file",
+    )
+    validate_suite.add_argument("path", type=Path, help="path to an evaluation-suite-v1 JSON file")
 
     compare = commands.add_parser(
         "compare",
@@ -89,6 +101,27 @@ def _validate_run(path: Path) -> int:
     return 0
 
 
+def _validate_suite(path: Path) -> int:
+    suite = load_suite_json(path)
+    tag_counts: dict[str, int] = {}
+    risk_counts: dict[str, int] = {}
+    for case in suite.cases:
+        for tag in case.tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        if case.risk_category is not None:
+            risk_counts[case.risk_category] = risk_counts.get(case.risk_category, 0) + 1
+    _print_json(
+        {
+            "status": "VALID",
+            "suite_version": suite.version,
+            "case_count": len(suite.cases),
+            "tag_counts": dict(sorted(tag_counts.items())),
+            "risk_category_counts": dict(sorted(risk_counts.items())),
+        }
+    )
+    return 0
+
+
 def _compare_runs(args: argparse.Namespace) -> int:
     baseline = load_run_json(args.baseline)
     candidate = load_run_json(args.candidate)
@@ -131,6 +164,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "schema":
             _print_json(get_external_run_schema())
             return 0
+        if args.command == "suite-schema":
+            _print_json(get_evaluation_suite_schema())
+            return 0
+        if args.command == "validate-suite":
+            return _validate_suite(args.path)
         if args.command == "validate-run":
             return _validate_run(args.path)
         if args.command == "compare":

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/peymanpro/AI-Evaluation-Engineering/blob/main/schemas/evaluation-suite-v1.schema.json",
+  "title": "AI Evaluation Engineering Evaluation Suite",
+  "description": "Version 1 JSON interchange format for reusable evaluation suites and test cases.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "suite": {
+      "$ref": "#/$defs/suite"
+    }
+  },
+  "$defs": {
+    "jsonValue": {
+      "description": "Any JSON value. Non-finite numeric values are not valid JSON numbers.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        }
+      ]
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/jsonValue"
+      }
+    },
+    "suite": {
+      "type": "object",
+      "required": [
+        "version",
+        "cases"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case"
+          }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": [
+        "id",
+        "input"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input": {
+          "$ref": "#/$defs/jsonObject"
+        },
+        "expected": {
+          "$ref": "#/$defs/jsonValue"
+        },
+        "metadata": {
+          "$ref": "#/$defs/jsonObject"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "risk_category": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
