@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from ai_eval_engineering.domain import EvaluationCase, EvaluationSuite, SystemOutput
+from ai_eval_engineering import (
+    AsyncEvaluationRunner,
+    AsyncOpenAICompatibleJudge,
+    AsyncOpenAIJudgeGrader,
+    EvaluationCase,
+    EvaluationSuite,
+    SystemOutput,
+)
 from ai_eval_engineering.integrations import ContractAdapter, IntegrationSpec
 from ai_eval_engineering.judge import EvaluationRubric, RubricDimension
 from ai_eval_engineering.openai_judge import (
@@ -86,6 +94,20 @@ class FakeCompletions:
         if self.error is not None:
             raise self.error
         return self.response
+
+
+class FakeAsyncCompletions(FakeCompletions):
+    async def create(self, **kwargs: Any) -> Any:
+        await asyncio.sleep(0)
+        return super().create(**kwargs)
+
+
+def make_async_client(
+    response: Any = None, error: Exception | None = None
+) -> tuple[Any, FakeAsyncCompletions]:
+    completions = FakeAsyncCompletions(response=response, error=error)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    return client, completions
 
 
 def make_client(response: Any = None, error: Exception | None = None) -> tuple[Any, FakeCompletions]:
@@ -316,3 +338,100 @@ def test_llm_judge_grader_runs_through_the_standard_evaluation_runner() -> None:
     assert run.cases[0].graders[0].passed is True
     assert run.cases[0].graders[0].score == 0.95
     assert run.cases[0].graders[0].metadata["provider"] == "openai-compatible"
+
+
+
+def test_async_openai_judge_parses_structured_output_and_metadata() -> None:
+    client, completions = make_async_client(make_response(result_json()))
+    judge = AsyncOpenAICompatibleJudge(model="test-model", client=client, temperature=0.0)
+
+    result = asyncio.run(judge.judge(make_case(), make_output(), make_rubric()))
+
+    assert result.label == "pass"
+    assert result.score == 0.95
+    assert result.dimension_scores == {"correctness": 1.0, "clarity": 0.9}
+    assert result.metadata["provider"] == "openai-compatible"
+    assert result.metadata["requested_model"] == "test-model"
+    assert result.metadata["usage"]["total_tokens"] == 163
+    assert completions.requests[0]["response_format"]["type"] == "json_schema"
+    assert completions.requests[0]["temperature"] == 0.0
+
+
+def test_async_openai_judge_rejects_wrong_case_id_before_provider_call() -> None:
+    client, completions = make_async_client(make_response(result_json()))
+    judge = AsyncOpenAICompatibleJudge(model="test-model", client=client)
+
+    with pytest.raises(ValueError, match="must match"):
+        asyncio.run(
+            judge.judge(
+                make_case(),
+                SystemOutput("wrong-case", "answer"),
+                make_rubric(),
+            )
+        )
+
+    assert completions.requests == []
+
+
+@pytest.mark.parametrize(
+    ("response", "error", "message"),
+    [
+        (make_response("{}", refusal="not allowed"), None, "refused"),
+        (make_response("not json"), None, "invalid JSON"),
+        (None, RuntimeError("secret input and provider payload"), "RuntimeError"),
+    ],
+)
+def test_async_openai_judge_surfaces_safe_provider_errors(
+    response: Any, error: Exception | None, message: str
+) -> None:
+    client, _ = make_async_client(response=response, error=error)
+    judge = AsyncOpenAICompatibleJudge(model="test-model", client=client)
+
+    with pytest.raises(JudgeProviderError, match=message) as caught:
+        asyncio.run(judge.judge(make_case(), make_output(), make_rubric()))
+
+    assert "secret input" not in str(caught.value)
+
+
+def test_async_llm_judge_grader_runs_through_async_runner() -> None:
+    client, completions = make_async_client(make_response(result_json(label="APPROVED")))
+    judge = AsyncOpenAICompatibleJudge(model="test-model", client=client)
+    grader = AsyncOpenAIJudgeGrader(
+        judge,
+        make_rubric(),
+        name="async_quality_judge",
+        pass_labels=("approved",),
+    )
+
+    class AsyncFixtureSystem:
+        async def run(self, case: EvaluationCase) -> SystemOutput:
+            await asyncio.sleep(0)
+            return SystemOutput(case.id, make_output().output, trace=make_output().trace)
+
+    suite = EvaluationSuite("async-judge-suite-v1", (make_case(),))
+    manifest = build_run_metadata(suite, "fixture/async-system", "test-revision", seed=3)
+    runner = AsyncEvaluationRunner(AsyncFixtureSystem(), [grader], max_concurrency=2)
+
+    run = asyncio.run(runner.run(suite, manifest))
+
+    assert len(run.cases) == 1
+    result = run.cases[0].graders[0]
+    assert result.grader == "async_quality_judge"
+    assert result.passed is True
+    assert result.score == 0.95
+    assert result.metadata["judge_label"] == "APPROVED"
+    assert result.metadata["rubric"] == "answer-quality"
+    assert len(completions.requests) == 1
+
+
+def test_async_llm_judge_grader_does_not_infer_pass_from_score() -> None:
+    client, _ = make_async_client(make_response(result_json(label="needs_review")))
+    grader = AsyncOpenAIJudgeGrader(
+        AsyncOpenAICompatibleJudge(model="test-model", client=client),
+        make_rubric(),
+    )
+
+    result = asyncio.run(grader.grade(make_case(), make_output()))
+
+    assert result.passed is False
+    assert result.score == 0.95

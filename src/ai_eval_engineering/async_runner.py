@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import math
+from collections.abc import Awaitable
 from typing import Protocol, cast
 
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
@@ -27,6 +29,14 @@ class AsyncSystemAdapter(Protocol):
         ...
 
 
+class AsyncGrader(Protocol):
+    """Contract for graders that perform asynchronous evaluation work."""
+
+    async def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        """Grade one system output asynchronously."""
+        ...
+
+
 class AsyncEvaluationRunner:
     """Evaluate cases concurrently while preserving suite order in the result.
 
@@ -39,7 +49,7 @@ class AsyncEvaluationRunner:
     def __init__(
         self,
         adapter: AsyncSystemAdapter,
-        graders: list[Grader],
+        graders: list[Grader | AsyncGrader],
         *,
         max_concurrency: int = 8,
         timeout_per_case_seconds: float | None = None,
@@ -63,7 +73,7 @@ class AsyncEvaluationRunner:
                 raise ValueError("timeout_per_case_seconds must be finite and positive.")
             timeout_per_case_seconds = timeout_value
         self._adapter = adapter
-        self._graders = tuple(graders)
+        self._graders: tuple[Grader | AsyncGrader, ...] = tuple(graders)
         self._max_concurrency = max_concurrency
         self._timeout_per_case_seconds = timeout_per_case_seconds
 
@@ -103,9 +113,15 @@ class AsyncEvaluationRunner:
                             ) from exc
                         raise
                 validate_system_output(case, output)
-                graded: tuple[GraderResult, ...] = tuple(
-                    grader.grade(case, output) for grader in self._graders
-                )
+                graded_items: list[GraderResult] = []
+                for grader in self._graders:
+                    grader_result = grader.grade(case, output)
+                    if inspect.isawaitable(grader_result):
+                        grader_result = await cast(Awaitable[GraderResult], grader_result)
+                    if not isinstance(grader_result, GraderResult):
+                        raise TypeError("Graders must return GraderResult instances.")
+                    graded_items.append(grader_result)
+                graded = tuple(graded_items)
                 validate_grader_results(graded, case.id)
                 results[index] = CaseResult(case=case, output=output, graders=graded)
 
