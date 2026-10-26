@@ -178,6 +178,8 @@ def test_sync_reservation_includes_paid_grader_cost_in_case_budget() -> None:
     assert grader.attempts == [("case-0", pytest.approx(0.10))]
     assert tuple(case.case.id for case in result.completed_cases) == ("case-0",)
     assert result.pending_case_ids == ("case-1", "case-2")
+    assert result.incomplete_case_ids == ("case-1",)
+    assert result.not_started_case_ids == ("case-2",)
     assert result.known_cost_usd == pytest.approx(0.50)
     assert result.status == "BUDGET_LIMIT_REACHED"
 
@@ -195,6 +197,8 @@ def test_sync_missing_cost_keeps_unsettled_reservation_and_stops() -> None:
     assert adapter.sent == ["case-0"]
     assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
     assert result.pending_case_ids == ("case-0", "case-1", "case-2")
+    assert result.incomplete_case_ids == ("case-0",)
+    assert result.not_started_case_ids == ("case-1", "case-2")
     assert result.known_cost_usd == 0.0
     assert result.reserved_cost_usd == pytest.approx(0.30)
 
@@ -241,6 +245,31 @@ def test_async_reservations_cover_all_in_flight_cases_before_launch() -> None:
     assert result.status == "BUDGET_LIMIT_REACHED"
 
 
+
+def test_async_reservation_includes_paid_grader_cost_in_case_budget() -> None:
+    suite = make_suite()
+    adapter = CappedAsyncAdapter(
+        {"case-0": 0.20, "case-1": 0.20, "case-2": 0.20}
+    )
+    grader = CappedPaidGrader({"case-0": 0.10, "case-1": 0.10, "case-2": 0.10})
+
+    result = asyncio.run(
+        AsyncEvaluationRunner(adapter, [grader], max_concurrency=2).run_reserved_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=ReservedBudgetPolicy(max_total_cost_usd=0.50, max_case_cost_usd=0.30),
+        )
+    )
+
+    assert set(adapter.sent) == {"case-0", "case-1"}
+    assert grader.sent == ["case-0"]
+    assert tuple(case.case.id for case in result.completed_cases) == ("case-0",)
+    assert result.pending_case_ids == ("case-1", "case-2")
+    assert result.incomplete_case_ids == ("case-1",)
+    assert result.not_started_case_ids == ("case-2",)
+    assert result.known_cost_usd == pytest.approx(0.50)
+    assert result.status == "BUDGET_LIMIT_REACHED"
+
 def test_component_that_exceeds_its_declared_reservation_is_flagged() -> None:
     suite = make_suite(count=1)
 
@@ -262,4 +291,5 @@ def test_component_that_exceeds_its_declared_reservation_is_flagged() -> None:
     assert result.status == "REQUEST_CAP_VIOLATED"
     assert result.known_cost_usd == pytest.approx(0.31)
     assert result.pending_case_ids == ("case-0",)
+    assert result.incomplete_case_ids == ("case-0",)
     assert result.within_budget is False
