@@ -39,6 +39,7 @@ openai = [
 ]
 
 [project.scripts]
+ai-eval = "ai_eval_engineering.app_cli:main"
 ai-eval-demo = "ai_eval_engineering.cli:main"
 
 [tool.setuptools]
