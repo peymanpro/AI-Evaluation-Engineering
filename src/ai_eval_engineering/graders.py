@@ -251,10 +251,10 @@ class JsonFieldGrader:
     """Compare one JSON output field with the expected value using JSON Pointer.
 
     The case's expected value is compared with the value at the configured
-    pointer. Examples: /decision, /user/tier, /items/0/id. Field values are
-    compared structurally; numeric int/float values compare numerically, while
-    booleans are never treated as numbers. The grader does not echo field values
-    into details or metadata.
+    pointer unless a fixed expected_value is supplied. Examples: /decision,
+    /user/tier, /items/0/id. Field values are compared structurally; numeric
+    int/float values compare numerically, while booleans are never treated as
+    numbers. The grader does not echo field values into details or metadata.
     """
 
     def __init__(
