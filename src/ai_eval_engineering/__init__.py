@@ -1,12 +1,21 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
-from .async_runner import AsyncEvaluationRunner, AsyncGrader, AsyncSystemAdapter
+from .async_runner import (
+    AsyncBudgetedSystemAdapter,
+    AsyncEvaluationRunner,
+    AsyncGrader,
+    AsyncSystemAdapter,
+)
 from .budget import (
     BudgetAssessment,
     BudgetedRunResult,
     BudgetViolation,
     LiveBudgetStatus,
+    RequestBudgetExceeded,
+    ReservedBudgetPolicy,
+    ReservedBudgetRunResult,
+    ReservedBudgetStatus,
     RunBudgetPolicy,
     assess_run_budget,
 )
@@ -95,7 +104,7 @@ from .result_import import (
     write_run_json,
 )
 from .retry import RetryEvent, RetryPolicy
-from .runner import EvaluationRunner, SystemAdapter
+from .runner import BudgetedGrader, BudgetedSystemAdapter, EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .slices import GraderSliceMetric, SliceSummary, analyze_run_slices
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
@@ -120,12 +129,15 @@ __all__ = [
     "AgentEvaluationResult",
     "AgentSuccessCriteria",
     "AggregatedResult",
+    "AsyncBudgetedSystemAdapter",
     "AsyncEvaluationRunner",
     "AsyncGrader",
     "AsyncOpenAICompatibleJudge",
     "AsyncOpenAIJudgeGrader",
     "AsyncSystemAdapter",
     "BudgetAssessment",
+    "BudgetedGrader",
+    "BudgetedSystemAdapter",
     "BudgetViolation",
     "BudgetedRunResult",
     "CalibrationReport",
@@ -165,6 +177,10 @@ __all__ = [
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
     "RetryEvent",
+    "RequestBudgetExceeded",
+    "ReservedBudgetPolicy",
+    "ReservedBudgetRunResult",
+    "ReservedBudgetStatus",
     "RetryPolicy",
     "RubricDimension",
     "RunBudgetPolicy",
