@@ -87,6 +87,8 @@ from .result_import import (
     write_run_json,
 )
 from .runner import EvaluationRunner, SystemAdapter
+from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
+from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 from .suite_io import (
     EVALUATION_SUITE_SCHEMA_VERSION,
     export_suite_payload,
@@ -95,8 +97,6 @@ from .suite_io import (
     load_suite_json,
     write_suite_json,
 )
-from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
-from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 from .tradeoffs import TradeoffObservation, quality_cost_frontier, quality_latency_frontier
 from .trajectory import Trajectory, TrajectoryEvent
 
