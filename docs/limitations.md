@@ -45,3 +45,8 @@
 - Judge output is model-generated evidence, not ground truth. Calibrate on representative human-labelled examples, inspect disagreements, and version the rubric/suite when judge semantics change.
 - The judge sends case input, expected values, observed output, and agent trace to the configured provider. Do not use it on sensitive evidence until the provider's retention, residency, and data-processing terms have been reviewed.
 - The runner-compatible judge grader maps labels to pass/fail through an explicit `pass_labels` setting. Use consistent, constrained labels in the rubric; a high numeric score does not override a non-passing label.
+
+
+- Adapter retries are opt-in and limited to caller-selected exception classes. The policy does not infer which provider errors are safe to retry, add jitter, coordinate retries across processes, or guarantee idempotency. A timeout can occur after the provider has processed or billed a request, so retries may repeat cost or side effects.
+- Retry callbacks are an observation hook, not a durable event store. Consumers that need durable retry telemetry must persist emitted retry events themselves. An exception raised by the callback fails the run rather than being swallowed.
+- The retry policy's configuration is stored in the run manifest and checked against the runner's actual configuration. This records the declared policy, but cannot prove that external providers or adapters honored the intended idempotency semantics.
