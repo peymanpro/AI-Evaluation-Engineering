@@ -162,13 +162,12 @@ jobs:
   publish-pypi:
     name: Publish distributions to PyPI
     needs: release
+    # PyPI stays opt-in during feature development; a push/tag never publishes it.
     if: >-
       needs.release.result == 'success' &&
       needs.release.outputs.skip != 'true' &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true)
-      )
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish_pypi == true
     runs-on: ubuntu-latest
     environment:
       name: pypi
