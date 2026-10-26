@@ -6,9 +6,11 @@ import math
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
+from .contracts import validate_grader_results
 from .domain import EvaluationCase, GraderResult, SystemOutput
+from .runner import Grader
 
 
 def _normalize(value: Any) -> Any:
@@ -239,6 +241,216 @@ def _finite_numeric(value: Any) -> float | None:
     except OverflowError:
         return None
     return numeric if math.isfinite(numeric) else None
+
+
+_JSON_FIELD_MISSING = object()
+
+
+class JsonFieldGrader:
+    """Compare one JSON output field with the expected value using JSON Pointer.
+
+    The case's expected value is compared with the value at the configured
+    pointer. Examples: /decision, /user/tier, /items/0/id. Field values are
+    compared structurally; numeric int/float values compare numerically, while
+    booleans are never treated as numbers. The grader does not echo field values
+    into details or metadata.
+    """
+
+    def __init__(self, path: str, name: str = "json_field") -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        if not isinstance(path, str) or not path.startswith("/"):
+            raise ValueError("path must be a non-empty JSON Pointer beginning with '/'.")
+        tokens: list[str] = []
+        for token in path[1:].split("/"):
+            if re.search(r"~(?![01])", token):
+                raise ValueError("path contains an invalid JSON Pointer escape.")
+            tokens.append(token.replace("~1", "/").replace("~0", "~"))
+        self.name = name
+        self.path = path
+        self._tokens = tuple(tokens)
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        actual = _resolve_json_pointer(output.output, self._tokens)
+        if actual is _JSON_FIELD_MISSING:
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="JSON Pointer path was not found in the output",
+                metadata={"path": self.path, "field_found": False},
+            )
+        passed = _json_values_equal(actual, case.expected)
+        return GraderResult(
+            grader=self.name,
+            passed=passed,
+            score=1.0 if passed else 0.0,
+            details=(
+                "JSON field matches the expected value"
+                if passed
+                else "JSON field does not match the expected value"
+            ),
+            metadata={"path": self.path, "field_found": True},
+        )
+
+
+def _resolve_json_pointer(value: Any, tokens: tuple[str, ...]) -> Any:
+    current = value
+    for token in tokens:
+        if isinstance(current, Mapping):
+            if token not in current:
+                return _JSON_FIELD_MISSING
+            current = current[token]
+        elif isinstance(current, list):
+            if not token.isdigit() or (token.startswith("0") and token != "0"):
+                return _JSON_FIELD_MISSING
+            index = int(token)
+            if index >= len(current):
+                return _JSON_FIELD_MISSING
+            current = current[index]
+        else:
+            return _JSON_FIELD_MISSING
+    return current
+
+
+def _json_values_equal(actual: Any, expected: Any) -> bool:
+    if isinstance(actual, bool) or isinstance(expected, bool):
+        return isinstance(actual, bool) and isinstance(expected, bool) and actual is expected
+    if isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
+        if isinstance(actual, float) and not math.isfinite(actual):
+            return False
+        if isinstance(expected, float) and not math.isfinite(expected):
+            return False
+        return actual == expected
+    if actual is None or expected is None:
+        return actual is None and expected is None
+    if isinstance(actual, str) and isinstance(expected, str):
+        return actual == expected
+    if isinstance(actual, list) and isinstance(expected, list):
+        return len(actual) == len(expected) and all(
+            _json_values_equal(left, right)
+            for left, right in zip(actual, expected, strict=True)
+        )
+    if isinstance(actual, Mapping) and isinstance(expected, Mapping):
+        if any(not isinstance(key, str) for key in actual) or any(
+            not isinstance(key, str) for key in expected
+        ):
+            return False
+        return actual.keys() == expected.keys() and all(
+            _json_values_equal(actual[key], expected[key]) for key in actual
+        )
+    return False
+
+
+class CompositeGrader:
+    """Combine synchronous graders using explicit weights and a pass rule.
+
+    Component scores must be finite and in [0, 1]. The reported score is their
+    weighted mean. Pass behavior defaults to all component graders passing;
+    callers can instead choose any-pass or a weighted-score threshold.
+    """
+
+    def __init__(
+        self,
+        graders: Iterable[Grader],
+        name: str = "composite",
+        *,
+        weights: Iterable[float] | None = None,
+        pass_mode: Literal["all", "any", "score_threshold"] = "all",
+        min_score: float = 0.5,
+    ) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        self.graders = tuple(graders)
+        if not self.graders:
+            raise ValueError("At least one component grader is required.")
+        if not all(callable(getattr(grader, "grade", None)) for grader in self.graders):
+            raise TypeError("Every component must provide a callable grade method.")
+        if pass_mode not in {"all", "any", "score_threshold"}:
+            raise ValueError("pass_mode must be 'all', 'any', or 'score_threshold'.")
+        threshold = _validate_tolerance(min_score, "min_score")
+        if threshold > 1.0:
+            raise ValueError("min_score must be between 0 and 1.")
+        if weights is None:
+            normalized_weights = tuple(1.0 for _ in self.graders)
+        else:
+            raw_weights = tuple(weights)
+            if len(raw_weights) != len(self.graders):
+                raise ValueError("weights must contain one value per component grader.")
+            normalized: list[float] = []
+            for index, value in enumerate(raw_weights):
+                weight = _validate_tolerance(value, f"weights[{index}]")
+                if weight <= 0:
+                    raise ValueError("component weights must be greater than zero.")
+                normalized.append(weight)
+            normalized_weights = tuple(normalized)
+        try:
+            total_weight = math.fsum(normalized_weights)
+        except OverflowError as exc:
+            raise ValueError("sum of component weights must be finite.") from exc
+        if not math.isfinite(total_weight) or total_weight <= 0:
+            raise ValueError("sum of component weights must be finite and positive.")
+
+        self.name = name
+        self.weights = normalized_weights
+        self._total_weight = total_weight
+        self.pass_mode = pass_mode
+        self.min_score = threshold
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        results = tuple(grader.grade(case, output) for grader in self.graders)
+        validate_grader_results(results, case.id)
+        for result in results:
+            score = result.score
+            if (
+                isinstance(score, bool)
+                or not isinstance(score, (int, float))
+                or not math.isfinite(float(score))
+                or not 0.0 <= score <= 1.0
+            ):
+                raise ValueError(
+                    f"Component grader {result.grader!r} must return a finite score in [0, 1]."
+                )
+
+        score = math.fsum(
+            weight * float(result.score)
+            for weight, result in zip(self.weights, results, strict=True)
+        ) / self._total_weight
+        passed_count = sum(result.passed for result in results)
+        if self.pass_mode == "all":
+            passed = passed_count == len(results)
+        elif self.pass_mode == "any":
+            passed = passed_count > 0
+        else:
+            passed = score >= self.min_score
+
+        components = [
+            {
+                "grader": result.grader,
+                "passed": result.passed,
+                "score": float(result.score),
+                "weight": weight,
+            }
+            for weight, result in zip(self.weights, results, strict=True)
+        ]
+        if self.pass_mode == "score_threshold":
+            rule = f"weighted score threshold {self.min_score:.6g}"
+        else:
+            rule = f"{self.pass_mode} component pass rule"
+        return GraderResult(
+            grader=self.name,
+            passed=passed,
+            score=score,
+            details=(
+                f"{passed_count}/{len(results)} component graders passed; "
+                f"weighted score {score:.6g}; pass rule: {rule}"
+            ),
+            metadata={
+                "pass_mode": self.pass_mode,
+                "min_score": self.min_score,
+                "components": components,
+            },
+        )
 
 
 class SchemaGrader:
