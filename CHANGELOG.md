@@ -10,6 +10,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Preflight suite/manifest validation and per-case output/grader contract checks to prevent inconsistent or non-finite evidence from entering a run.
 - Native-async OpenAI-compatible judge and grader that can run inside bounded concurrent evaluations without blocking on a synchronous model SDK call.
 - Post-run budget assessment for total/per-case measured cost, token usage, and per-case latency, with explicit exceeded, incomplete-evidence, and invalid-evidence outcomes.
+- Atomic checkpoints for synchronous and asynchronous runs, with strict suite/run-identity validation and resume of unfinished cases.
 
 ## 0.2.0 - 2026-10-26
 
