@@ -6,6 +6,8 @@
 - Offline evaluation does not imply online product impact.
 - Contract-snapshot integrations verify adapter compatibility and evaluation semantics; they do not execute the sibling applications inside this CI job.
 - Quality/cost/latency frontiers expose trade-offs without automatically selecting a preferred system.
+- Offline slice analysis is descriptive. It does not calculate subgroup confidence intervals, perform multiple-comparison correction across slices, or establish fairness. Tag slices overlap when a case has multiple tags; do not sum their counts as if they were disjoint populations.
+- Slice values can be read from case metadata only when the caller explicitly selects a top-level scalar field. Such values may still be sensitive; avoid identifiers or confidential attributes, and protect the generated CLI output.
 - Run budget assessment checks recorded cost, token usage, and latency after execution. It is not a live spend limiter, does not estimate monetary cost from tokens, and cannot infer missing measurements.
 - Both runners fail the current run when a case fails; when an explicit checkpoint path is configured, successful earlier cases are atomically retained and can be resumed. Checkpoints are not encrypted, are not a secure vault, and do not support concurrent writers to the same path. Case inputs, expected values, outputs, traces, and grader details may be sensitive.
 - The async runner bounds asynchronous system calls and can apply a per-case adapter deadline, but it does not retry failed requests automatically or make synchronous graders non-blocking. A timeout fails the whole run after cancelling pending workers; retry rules and idempotency remain provider/application responsibilities.

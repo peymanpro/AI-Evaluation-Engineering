@@ -88,6 +88,7 @@ from .result_import import (
 )
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
+from .slices import GraderSliceMetric, SliceSummary, analyze_run_slices
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 from .suite_io import (
     EVALUATION_SUITE_SCHEMA_VERSION,
@@ -134,6 +135,7 @@ __all__ = [
     "FailureRecord",
     "FakeJudge",
     "GraderResult",
+    "GraderSliceMetric",
     "IntegrationSpec",
     "Judge",
     "JudgeProviderError",
@@ -151,11 +153,13 @@ __all__ = [
     "RubricDimension",
     "RunBudgetPolicy",
     "RunMetadata",
+    "SliceSummary",
     "SystemAdapter",
     "SystemOutput",
     "TradeoffObservation",
     "Trajectory",
     "TrajectoryEvent",
+    "analyze_run_slices",
     "assess_online_evidence",
     "assess_run_budget",
     "build_failure_regression_suite",

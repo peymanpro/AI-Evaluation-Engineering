@@ -12,6 +12,7 @@ from pathlib import Path
 from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
 from .result_import import get_external_run_schema, load_run_json
+from .slices import analyze_run_slices
 from .suite_io import get_evaluation_suite_schema, load_suite_json
 
 
@@ -74,6 +75,23 @@ def _parser() -> argparse.ArgumentParser:
     budget.add_argument("--max-case-cost-usd", type=float)
     budget.add_argument("--max-total-tokens", type=int)
     budget.add_argument("--max-case-latency-ms", type=float)
+
+    slices = commands.add_parser(
+        "slices",
+        help="summarize recorded run performance by tags, risk category, or case metadata",
+    )
+    slices.add_argument("path", type=Path, help="external-run-v1 JSON file")
+    slices.add_argument(
+        "--by",
+        required=True,
+        help="slice dimension: tag, risk_category, or metadata.<field>",
+    )
+    slices.add_argument("--min-cases", type=int, default=30)
+    slices.add_argument(
+        "--exclude-missing",
+        action="store_true",
+        help="omit the explicit missing-value slice",
+    )
 
     return parser
 
@@ -156,6 +174,28 @@ def _assess_budget(args: argparse.Namespace) -> int:
     return 0 if assessment.passed else 1
 
 
+def _analyze_slices(args: argparse.Namespace) -> int:
+    run = load_run_json(args.path)
+    summaries = analyze_run_slices(
+        run,
+        by=args.by,
+        min_cases=args.min_cases,
+        include_missing=not args.exclude_missing,
+    )
+    _print_json(
+        {
+            "run_id": run.manifest.run_id,
+            "system_name": run.manifest.system_name,
+            "system_version": run.manifest.system_version,
+            "suite_version": run.manifest.suite_version,
+            "dimension": args.by,
+            "min_cases": args.min_cases,
+            "slices": [asdict(item) for item in summaries],
+        }
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI; return a shell-friendly exit code."""
     parser = _parser()
@@ -175,6 +215,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _compare_runs(args)
         if args.command == "budget":
             return _assess_budget(args)
+        if args.command == "slices":
+            return _analyze_slices(args)
         parser.error(f"unsupported command {args.command!r}")
     except (OSError, TypeError, ValueError, RuntimeError) as exc:
         print(f"ai-eval: {exc}", file=sys.stderr)

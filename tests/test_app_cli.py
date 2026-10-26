@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from ai_eval_engineering.app_cli import main
@@ -228,3 +229,42 @@ def test_validate_suite_command_returns_two_for_invalid_file(
 
     assert main(["validate-suite", str(path)]) == 2
     assert "schema_version" in capsys.readouterr().err
+
+
+def test_slices_command_reports_each_risk_group_without_dropping_missing(
+    tmp_path: Path, capsys
+) -> None:
+    original = make_run("revision-1", 0.9)
+    cases = tuple(
+        replace(
+            item,
+            case=replace(
+                item.case,
+                risk_category="prompt_injection" if index < 2 else None,
+                tags=("security",) if index < 2 else (),
+            ),
+        )
+        for index, item in enumerate(original.cases)
+    )
+    run_path = tmp_path / "slices.json"
+    write_run_json(replace(original, cases=cases), run_path)
+
+    code = main(
+        [
+            "slices",
+            str(run_path),
+            "--by",
+            "risk_category",
+            "--min-cases",
+            "2",
+        ]
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert output["dimension"] == "risk_category"
+    by_value = {item["value"]: item for item in output["slices"]}
+    assert by_value["prompt_injection"]["case_count"] == 2
+    assert by_value["prompt_injection"]["meets_min_cases"] is True
+    assert by_value[None]["case_count"] == 1
+    assert by_value[None]["meets_min_cases"] is False
