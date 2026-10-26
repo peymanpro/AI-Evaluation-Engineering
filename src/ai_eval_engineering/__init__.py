@@ -16,6 +16,7 @@ from .domain import (
     SystemOutput,
 )
 from .evidence import write_evidence_package
+from .graders import ContainsGrader, NumericToleranceGrader, RegexGrader
 from .evidence_guardrails import EvidenceAssessment, EvidenceIssue, assess_online_evidence
 from .failure_delta import (
     FailureDeltaReport,
@@ -122,6 +123,7 @@ __all__ = [
     "CaseResult",
     "CheckpointError",
     "ConfidenceInterval",
+    "ContainsGrader",
     "ContractAdapter",
     "EvaluationCase",
     "EvaluationRubric",
@@ -142,12 +144,14 @@ __all__ = [
     "JudgeResult",
     "LabelCalibration",
     "MetricGateDecision",
+    "NumericToleranceGrader",
     "OnlineMetricContract",
     "OnlineObservation",
     "OpenAICompatibleJudge",
     "OpenAIJudgeGrader",
     "Outcome",
     "PersistentFailure",
+    "RegexGrader",
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
     "RubricDimension",
