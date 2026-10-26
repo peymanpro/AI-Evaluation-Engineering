@@ -75,6 +75,7 @@ from .release_gate import (
 from .result_import import (
     EXTERNAL_RUN_SCHEMA_VERSION,
     export_run_payload,
+    get_external_run_schema,
     import_run_payload,
     load_run_json,
     write_run_json,
@@ -144,6 +145,7 @@ __all__ = [
     "evidence_rag_suite",
     "export_run_payload",
     "extract_failure_records",
+    "get_external_run_schema",
     "how_agents_adapter",
     "how_agents_suite",
     "import_promptfoo_payload",
