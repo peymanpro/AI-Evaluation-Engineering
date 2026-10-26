@@ -13,12 +13,12 @@ from ai_eval_engineering.domain import (
     GraderResult,
     SystemOutput,
 )
-from ai_eval_engineering.result_import import write_run_json
 from ai_eval_engineering.release_gate import ReleaseMetricPolicy
 from ai_eval_engineering.release_policy import (
     ReleasePolicy,
     write_release_policy_json,
 )
+from ai_eval_engineering.result_import import write_run_json
 from ai_eval_engineering.runner import build_run_metadata
 from ai_eval_engineering.suite_io import write_suite_json
 
