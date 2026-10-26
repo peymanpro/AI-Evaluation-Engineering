@@ -240,6 +240,7 @@ def test_sync_reservation_includes_paid_grader_cost_in_case_budget() -> None:
     assert tuple(case.case.id for case in result.completed_cases) == ("case-0",)
     assert result.pending_case_ids == ("case-1", "case-2")
     assert result.incomplete_case_ids == ("case-1",)
+    assert result.unresolved_cost_case_ids == ()
     assert result.not_started_case_ids == ("case-2",)
     assert result.known_cost_usd == pytest.approx(0.50)
     assert result.status == "BUDGET_LIMIT_REACHED"
@@ -259,6 +260,7 @@ def test_sync_missing_cost_keeps_unsettled_reservation_and_stops() -> None:
     assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
     assert result.pending_case_ids == ("case-0", "case-1", "case-2")
     assert result.incomplete_case_ids == ("case-0",)
+    assert result.unresolved_cost_case_ids == ("case-0",)
     assert result.not_started_case_ids == ("case-1", "case-2")
     assert result.known_cost_usd == 0.0
     assert result.reserved_cost_usd == pytest.approx(0.30)
@@ -353,4 +355,5 @@ def test_component_that_exceeds_its_declared_reservation_is_flagged() -> None:
     assert result.known_cost_usd == pytest.approx(0.31)
     assert result.pending_case_ids == ("case-0",)
     assert result.incomplete_case_ids == ("case-0",)
+    assert result.unresolved_cost_case_ids == ()
     assert result.within_budget is False
