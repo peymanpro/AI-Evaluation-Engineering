@@ -82,9 +82,9 @@ def test_numeric_tolerance_grader_uses_absolute_and_relative_tolerance() -> None
     )
 
     assert within.passed
-    assert within.metadata["allowed_error"] == 1.1
+    assert within.metadata["allowed_error"] == pytest.approx(1.1)
     assert not outside.passed
-    assert outside.metadata["absolute_error"] == 1.2
+    assert outside.metadata["absolute_error"] == pytest.approx(1.2)
 
 
 def test_numeric_tolerance_grader_rejects_bool_and_non_finite_values() -> None:
