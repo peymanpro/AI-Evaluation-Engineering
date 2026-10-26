@@ -369,3 +369,16 @@ def test_json_field_grader_snapshots_configured_expected_value() -> None:
     )
 
     assert result.passed
+
+def test_json_field_grader_declares_cost_free_budget_safety() -> None:
+    assert JsonFieldGrader("/decision").budget_cost_free is True
+
+
+def test_composite_grader_is_cost_free_only_when_every_component_declares_it() -> None:
+    deterministic = CompositeGrader(
+        [ExactMatchGrader(), JsonFieldGrader("/decision", expected_value="approved")]
+    )
+    with_custom = CompositeGrader([ExactMatchGrader(), OutOfRangeScoreGrader()])
+
+    assert deterministic.budget_cost_free is True
+    assert with_custom.budget_cost_free is False
