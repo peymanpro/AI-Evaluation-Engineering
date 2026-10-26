@@ -26,6 +26,18 @@ Online observations are separated into exposure and outcome records linked by ex
 
 Evidence guardrails can flag small samples, overlapping population assignments, missing outcomes, missing ground truth, and selection bias. An insufficient assessment is surfaced explicitly rather than converted into a confident conclusion.
 
+## Offline subgroup analysis
+
+Aggregate scores can mask failures concentrated in a risk category, locale, customer tier, or
+another declared case attribute. `analyze_run_slices` reports descriptive results for explicitly
+selected tags, risk categories, and scalar case-metadata fields. It reports both the all-graders
+case pass rate and per-grader metrics, plus case counts and a minimum-count flag.
+
+Slices do not automatically establish subgroup significance or fairness. Define meaningful
+categories before looking at results, keep small groups visible, inspect missing/unclassified cases,
+and use an appropriate statistical design before claiming one group differs from another. Selecting
+case metadata is explicit because metadata can contain sensitive information.
+
 ## Trade-off analysis
 
 Quality/cost and quality/latency views expose non-dominated variants. The reporting layer does not choose a single preferred system.
