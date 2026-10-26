@@ -132,6 +132,22 @@ def test_free_form_json_objects_remain_extensible_and_round_trip() -> None:
     assert export_run_payload(run) == data
 
 
+@pytest.mark.parametrize("cycle_kind", ["dict", "list"])
+def test_circular_python_values_are_rejected_as_invalid_json(cycle_kind: str) -> None:
+    data = payload()
+    if cycle_kind == "dict":
+        cycle: dict[str, Any] | list[Any] = {}
+        cycle["self"] = cycle
+    else:
+        cycle = []
+        cycle.append(cycle)
+
+    data["manifest"]["configuration"]["cycle"] = cycle
+
+    with pytest.raises(ValueError, match="circular reference"):
+        import_run_payload(data)
+
+
 def test_json_file_round_trip_and_nested_destination(tmp_path: Path) -> None:
     run = import_run_payload(payload())
     path = tmp_path / "nested" / "external-run.json"
