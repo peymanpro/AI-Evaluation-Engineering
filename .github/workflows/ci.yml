@@ -52,3 +52,5 @@ jobs:
         run: python examples/deterministic_graders.py
       - name: Retry policy demo
         run: python examples/retry_policy.py
+      - name: Structured and composite graders demo
+        run: python examples/structured_composite_graders.py
