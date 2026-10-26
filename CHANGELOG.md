@@ -2,7 +2,7 @@
 
 Notable user-facing changes are recorded here. This project follows semantic versioning where practical; pre-1.0 releases may still refine public APIs.
 
-## Unreleased
+## 0.3.0 - 2026-10-27
 
 ### Added
 - Versioned `release-policy-v1` JSON policies and a multi-metric `ai-eval compare --policy` mode with reproducible bootstrap settings, strict validation, and schema export; the legacy single-metric CLI remains supported.
