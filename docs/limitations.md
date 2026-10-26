@@ -6,6 +6,7 @@
 - Offline evaluation does not imply online product impact.
 - Contract-snapshot integrations verify adapter compatibility and evaluation semantics; they do not execute the sibling applications inside this CI job.
 - Quality/cost/latency frontiers expose trade-offs without automatically selecting a preferred system.
+- Regex grader patterns are evaluated with Python's standard regex engine and have no execution deadline; only use trusted patterns. They are checks, not a sandbox for user-supplied regular expressions.
 - Offline slice analysis is descriptive. It does not calculate subgroup confidence intervals, perform multiple-comparison correction across slices, or establish fairness. Tag slices overlap when a case has multiple tags; do not sum their counts as if they were disjoint populations.
 - Slice values can be read from case metadata only when the caller explicitly selects a top-level scalar field. Such values may still be sensitive; avoid identifiers or confidential attributes, and protect the generated CLI output.
 - Run budget assessment checks recorded cost, token usage, and latency after execution. It is not a live spend limiter, does not estimate monetary cost from tokens, and cannot infer missing measurements.
