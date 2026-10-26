@@ -13,7 +13,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - PyPI publishing automation via Trusted Publishing, scoped to a separate publication job and backed by distribution metadata checks.
 
 ### Quality and release engineering
-- The CI suite contains 195 automated tests at the release-preparation commit, plus Ruff, mypy, and deterministic demonstration checks.
+- The CI suite contains 196 automated tests at the release-preparation commit, plus Ruff, mypy, and deterministic demonstration checks.
 - Synthetic fixtures are explicitly identified as test data, not real provider benchmark results.
 - The base installation remains free of mandatory runtime dependencies; the live judge SDK is optional.
 
