@@ -13,7 +13,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
 - post-run budget assessments for recorded cost, token usage, and per-case latency;
 - offline slice analysis by case tag, risk category, or selected scalar metadata, with per-grader breakdowns;
-- deterministic exact-match, substring, regular-expression, numeric-tolerance, schema, rule-based, and trajectory graders;
+- deterministic exact-match, substring, regular-expression, numeric-tolerance, JSON-field, composite, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
 - optional synchronous and native-async OpenAI-compatible structured-output LLM judges, rubric representation, and human calibration;
@@ -187,6 +187,49 @@ numeric_check = NumericToleranceGrader(abs_tol=0.05, rel_tol=0.01).grade(
 
 Type mismatches fail the case explicitly. These graders stay deterministic, dependency-free, and
 separate from the optional LLM-as-judge path.
+
+## Structured-field and composite graders
+
+Use `JsonFieldGrader` when an output is a structured object and a decision depends on one
+specific value. It uses a JSON Pointer path such as `/decision`, `/user/tier`, or
+`/items/0/id`. The expected value comes from `case.expected` by default, or from the optional
+`expected_value` argument when the grader is part of a composite policy. Missing paths fail
+explicitly, and field values are not copied into result details or metadata.
+
+`CompositeGrader` runs several synchronous graders over the same case/output and calculates a
+weighted mean of their scores. Component scores must be finite and in `[0, 1]`; grader names must
+be unique. The default pass rule is conservative: **all** component graders must pass. You can
+explicitly select `pass_mode="any"` or `pass_mode="score_threshold"` with `min_score=`.
+
+```python
+from ai_eval_engineering import CompositeGrader, JsonFieldGrader
+from ai_eval_engineering.domain import EvaluationCase, SystemOutput
+
+case = EvaluationCase("refund-decision", {}, expected=None)
+output = SystemOutput(
+    "refund-decision",
+    {"decision": "approved", "safety": {"allowed": True}},
+)
+
+policy_grader = CompositeGrader(
+    [
+        JsonFieldGrader("/decision", name="decision", expected_value="approved"),
+        JsonFieldGrader("/safety/allowed", name="safety", expected_value=True),
+    ],
+    weights=[0.75, 0.25],
+    pass_mode="all",
+)
+result = policy_grader.grade(case, output)
+assert result.passed
+assert result.score == 1.0
+```
+
+Use JSON Pointer escaping for field names that contain a slash (`~1`) or tilde (`~0`). JSON field
+comparisons are exact structural checks (integer and floating-point JSON numbers compare
+numerically); they are not a substitute for `NumericToleranceGrader` when numeric error is allowed.
+Composite graders aggregate synchronous grader results only; async graders require async-aware
+composition. The composite result records component names, pass states, scores, weights, and the
+chosen pass rule, but does not embed child details that may contain sensitive data.
 
 ## Asynchronous evaluation
 
