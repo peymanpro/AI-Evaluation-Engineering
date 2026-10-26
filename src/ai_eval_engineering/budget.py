@@ -597,10 +597,21 @@ class _LiveBudgetGuard:
         self.observe_output(result.case.id, result.output)
         self.observe_graders(result)
 
-    def finish(self, pending_case_ids: tuple[str, ...]) -> LiveBudgetStatus:
-        """Return a status, ensuring unexplained partial results are never called complete."""
+    def finish(
+        self,
+        pending_case_ids: tuple[str, ...],
+        *,
+        completed_case_count: int,
+    ) -> LiveBudgetStatus:
+        """Finalize the status without treating an empty suite as budget evidence."""
         if self._stop_status is not None:
             return self._stop_status
+        if completed_case_count == 0:
+            self._stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the suite produced no completed cases; budget compliance cannot be established",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
         if pending_case_ids:
             self._stop(
                 "INCOMPLETE_BUDGET_EVIDENCE",
