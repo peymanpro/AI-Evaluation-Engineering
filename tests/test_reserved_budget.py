@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -272,6 +273,67 @@ def test_sync_missing_cost_keeps_unsettled_reservation_and_stops() -> None:
     assert result.known_cost_usd == 0.0
     assert result.reserved_cost_usd == pytest.approx(0.30)
 
+
+
+def test_checkpointed_case_at_exact_case_cap_is_not_false_positive(tmp_path: Path) -> None:
+    class CheckpointAdapter:
+        def run(self, case: EvaluationCase) -> SystemOutput:
+            return SystemOutput(
+                case.id,
+                case.input["answer"],
+                latency_ms=10.0,
+                cost_usd=0.20,
+            )
+
+        def run_with_budget(
+            self, case: EvaluationCase, *, max_cost_usd: float
+        ) -> SystemOutput:
+            raise AssertionError("checkpoint should be reused without a new request")
+
+    class CheckpointPaidGrader:
+        def _result(self) -> GraderResult:
+            return GraderResult(
+                grader="paid-checkpoint-judge",
+                passed=True,
+                score=1.0,
+                details="recorded paid grader",
+                metadata={"cost_usd": 0.10},
+            )
+
+        def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+            return self._result()
+
+        def grade_with_budget(
+            self,
+            case: EvaluationCase,
+            output: SystemOutput,
+            *,
+            max_cost_usd: float,
+        ) -> GraderResult:
+            raise AssertionError("checkpoint grader should not be rerun")
+
+    suite = make_suite(count=1)
+    manifest = manifest_for(suite)
+    adapter = CheckpointAdapter()
+    grader = CheckpointPaidGrader()
+    runner = EvaluationRunner(adapter, [grader])
+    checkpoint = tmp_path / "reserved-budget-checkpoint.json"
+
+    runner.run(suite, manifest, checkpoint_path=checkpoint)
+    result = runner.run_reserved_budgeted(
+        suite,
+        manifest,
+        policy=ReservedBudgetPolicy(max_total_cost_usd=0.50, max_case_cost_usd=0.30),
+        checkpoint_path=checkpoint,
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.known_cost_usd == pytest.approx(0.30)
+    assert result.reserved_cost_usd == pytest.approx(0.0)
+    assert result.pending_case_ids == ()
+    assert result.incomplete_case_ids == ()
+    assert result.unresolved_cost_case_ids == ()
+    assert result.within_budget is True
 
 def test_reserved_mode_rejects_unbounded_components_before_any_request() -> None:
     suite = make_suite()
