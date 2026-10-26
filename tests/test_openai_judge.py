@@ -11,6 +11,7 @@ from ai_eval_engineering.judge import EvaluationRubric, RubricDimension
 from ai_eval_engineering.openai_judge import (
     JudgeProviderError,
     OpenAICompatibleJudge,
+    OpenAIJudgeGrader,
 )
 
 
@@ -245,3 +246,46 @@ def test_constructor_rejects_invalid_configuration(
 ) -> None:
     with pytest.raises(error, match=message):
         OpenAICompatibleJudge(model=kwargs.pop("model", "test-model"), client=object(), **kwargs)
+
+def test_runner_compatible_grader_maps_configured_labels_and_metadata() -> None:
+    client, _ = make_client(make_response(result_json(label="APPROVED")))
+    judge = OpenAICompatibleJudge(model="test-model", client=client)
+    grader = OpenAIJudgeGrader(
+        judge,
+        make_rubric(),
+        name="quality_judge",
+        pass_labels=("approved",),
+    )
+
+    result = grader.grade(make_case(), make_output())
+
+    assert result.grader == "quality_judge"
+    assert result.passed is True
+    assert result.score == 0.95
+    assert result.details == "The returned answer matches the expected value."
+    assert result.metadata["judge_label"] == "APPROVED"
+    assert result.metadata["rubric"] == "answer-quality"
+    assert result.metadata["dimension_scores"] == {
+        "correctness": 1.0,
+        "clarity": 0.9,
+    }
+
+
+def test_runner_compatible_grader_does_not_infer_pass_from_high_score() -> None:
+    client, _ = make_client(make_response(result_json(label="review")))
+    grader = OpenAIJudgeGrader(
+        OpenAICompatibleJudge(model="test-model", client=client),
+        make_rubric(),
+    )
+
+    result = grader.grade(make_case(), make_output())
+
+    assert result.passed is False
+    assert result.score == 0.95
+
+
+def test_runner_compatible_grader_rejects_empty_pass_label_policy() -> None:
+    judge = OpenAICompatibleJudge(model="test-model", client=object())
+
+    with pytest.raises(ValueError, match="pass_labels"):
+        OpenAIJudgeGrader(judge, make_rubric(), pass_labels=())
