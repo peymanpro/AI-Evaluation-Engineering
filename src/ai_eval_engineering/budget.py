@@ -673,6 +673,7 @@ class ReservedBudgetRunResult:
     manifest: RunMetadata
     completed_cases: tuple[CaseResult, ...]
     pending_case_ids: tuple[str, ...]
+    incomplete_case_ids: tuple[str, ...]
     status: ReservedBudgetStatus
     known_cost_usd: float
     reserved_cost_usd: float
@@ -682,6 +683,12 @@ class ReservedBudgetRunResult:
     def all_cases_completed(self) -> bool:
         """Whether every suite case has a complete CaseResult."""
         return not self.pending_case_ids
+
+    @property
+    def not_started_case_ids(self) -> tuple[str, ...]:
+        """Cases still pending whose billable execution has not started."""
+        incomplete = set(self.incomplete_case_ids)
+        return tuple(case_id for case_id in self.pending_case_ids if case_id not in incomplete)
 
     @property
     def within_budget(self) -> bool:
