@@ -25,6 +25,8 @@ jobs:
         run: ruff check .
       - name: Mypy
         run: mypy src
+      - name: Evaluation CLI help
+        run: ai-eval --help
       - name: Core demo
         run: ai-eval-demo
       - name: Online evaluation demo
