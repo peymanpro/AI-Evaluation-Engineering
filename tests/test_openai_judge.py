@@ -201,7 +201,7 @@ def test_empty_completion_is_reported() -> None:
         ('{"label":"pass"}', "fields do not match"),
         (
             result_json(dimension_scores={"correctness": 1.0}),
-            "dimension_scores must match the rubric",
+            "dimension scores must match the rubric",
         ),
         (result_json(score=1.5), "score must be finite and within [0, 1]"),
         (result_json(label=" "), "label must not be empty"),
