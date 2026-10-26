@@ -30,7 +30,13 @@ from .failure_memory import (
     read_failure_memory,
     write_failure_memory,
 )
-from .graders import ContainsGrader, NumericToleranceGrader, RegexGrader
+from .graders import (
+    CompositeGrader,
+    ContainsGrader,
+    JsonFieldGrader,
+    NumericToleranceGrader,
+    RegexGrader,
+)
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -124,6 +130,7 @@ __all__ = [
     "CaseResult",
     "CheckpointError",
     "ConfidenceInterval",
+    "CompositeGrader",
     "ContainsGrader",
     "ContractAdapter",
     "EvaluationCase",
@@ -140,6 +147,7 @@ __all__ = [
     "GraderResult",
     "GraderSliceMetric",
     "IntegrationSpec",
+    "JsonFieldGrader",
     "Judge",
     "JudgeProviderError",
     "JudgeResult",
