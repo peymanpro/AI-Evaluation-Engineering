@@ -7,6 +7,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 ## What the library provides
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
+- versioned JSON suite files with strict import/export validation, reusable datasets, and a packaged schema;
 - reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
