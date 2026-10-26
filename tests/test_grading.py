@@ -1,7 +1,13 @@
 import pytest
 
-from ai_eval_engineering import ContainsGrader, NumericToleranceGrader, RegexGrader
-from ai_eval_engineering.domain import EvaluationCase, SystemOutput
+from ai_eval_engineering import (
+    CompositeGrader,
+    ContainsGrader,
+    JsonFieldGrader,
+    NumericToleranceGrader,
+    RegexGrader,
+)
+from ai_eval_engineering.domain import EvaluationCase, GraderResult, SystemOutput
 from ai_eval_engineering.graders import ExactMatchGrader, TrajectoryGrader
 
 
@@ -164,3 +170,140 @@ def test_numeric_tolerance_rejects_overflow_without_emitting_non_finite_metadata
     assert not result.passed
     assert "finite numeric range" in result.details
     assert result.metadata == {}
+
+
+
+def test_json_field_grader_checks_nested_object_and_array_paths() -> None:
+    case = EvaluationCase(
+        "field-match",
+        {},
+        expected={"allowed": True, "risk": 2},
+    )
+    output = SystemOutput(
+        "field-match",
+        {"results": [{"decision": {"allowed": True, "risk": 2.0}}]},
+    )
+
+    result = JsonFieldGrader("/results/0/decision").grade(case, output)
+
+    assert result.passed
+    assert result.score == 1.0
+    assert result.metadata == {"path": "/results/0/decision", "field_found": True}
+
+
+def test_json_field_grader_supports_json_pointer_escaping() -> None:
+    result = JsonFieldGrader("/a~1b/tilde~0").grade(
+        EvaluationCase("escaped-path", {}, expected="found"),
+        SystemOutput("escaped-path", {"a/b": {"tilde~": "found"}}),
+    )
+
+    assert result.passed
+
+
+def test_json_field_grader_reports_missing_paths_without_leaking_values() -> None:
+    result = JsonFieldGrader("/user/secret").grade(
+        EvaluationCase("missing-field", {}, expected="private-value"),
+        SystemOutput("missing-field", {"user": {}}),
+    )
+
+    assert not result.passed
+    assert result.metadata == {"path": "/user/secret", "field_found": False}
+    assert "private-value" not in result.details
+
+
+def test_json_field_grader_does_not_treat_boolean_as_number() -> None:
+    result = JsonFieldGrader("/active").grade(
+        EvaluationCase("bool-number", {}, expected=1),
+        SystemOutput("bool-number", {"active": True}),
+    )
+
+    assert not result.passed
+
+
+@pytest.mark.parametrize("path", ["decision", "", "/bad~2escape"])
+def test_json_field_grader_rejects_invalid_json_pointer(path: str) -> None:
+    with pytest.raises(ValueError, match="JSON Pointer"):
+        JsonFieldGrader(path)
+
+
+def test_composite_grader_weighted_score_and_all_any_pass_modes() -> None:
+    case = EvaluationCase("composite", {}, expected="hello")
+    output = SystemOutput("composite", "hello world")
+    exact = ExactMatchGrader()
+    contains = ContainsGrader(name="contains", substring="hello")
+
+    conservative = CompositeGrader([exact, contains], weights=[1, 3])
+    permissive = CompositeGrader(
+        [exact, contains],
+        weights=[1, 3],
+        pass_mode="any",
+    )
+    threshold = CompositeGrader(
+        [exact, contains],
+        weights=[1, 3],
+        pass_mode="score_threshold",
+        min_score=0.75,
+    )
+
+    conservative_result = conservative.grade(case, output)
+    permissive_result = permissive.grade(case, output)
+    threshold_result = threshold.grade(case, output)
+
+    assert conservative_result.score == pytest.approx(0.75)
+    assert not conservative_result.passed
+    assert permissive_result.score == pytest.approx(0.75)
+    assert permissive_result.passed
+    assert threshold_result.passed
+    assert threshold_result.metadata["pass_mode"] == "score_threshold"
+    assert len(threshold_result.metadata["components"]) == 2
+
+
+def test_composite_grader_rejects_duplicate_component_names() -> None:
+    grader = CompositeGrader(
+        [
+            ExactMatchGrader(name="same"),
+            ContainsGrader(name="same", substring="hello"),
+        ]
+    )
+
+    with pytest.raises(ValueError, match="Duplicate grader name"):
+        grader.grade(
+            EvaluationCase("duplicate-component", {}, expected="hello"),
+            SystemOutput("duplicate-component", "hello"),
+        )
+
+
+class OutOfRangeScoreGrader:
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        return GraderResult("out_of_range", True, 1.5, "invalid component score")
+
+
+def test_composite_grader_rejects_component_scores_outside_zero_to_one() -> None:
+    grader = CompositeGrader([OutOfRangeScoreGrader()])
+
+    with pytest.raises(ValueError, match="score in \[0, 1\]"):
+        grader.grade(
+            EvaluationCase("out-of-range", {}, expected="answer"),
+            SystemOutput("out-of-range", "answer"),
+        )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "message"),
+    [
+        ({"weights": [1.0]}, ValueError, "one value per component"),
+        ({"weights": [1.0, 0.0]}, ValueError, "greater than zero"),
+        ({"weights": [float("inf"), 1.0]}, ValueError, "finite"),
+        ({"pass_mode": "majority"}, ValueError, "pass_mode"),
+        ({"min_score": 1.1}, ValueError, "between 0 and 1"),
+    ],
+)
+def test_composite_grader_rejects_invalid_configuration(
+    kwargs: dict[str, Any],
+    error: type[Exception],
+    message: str,
+) -> None:
+    from ai_eval_engineering.graders import CompositeGrader as ModuleCompositeGrader
+
+    with pytest.raises(error, match=message):
+        ModuleCompositeGrader([ExactMatchGrader(), ContainsGrader()], **kwargs)
