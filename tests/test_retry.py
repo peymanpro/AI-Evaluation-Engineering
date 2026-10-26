@@ -26,13 +26,16 @@ def make_suite() -> EvaluationSuite:
     )
 
 
-def make_manifest(suite: EvaluationSuite):
+def make_manifest(
+    suite: EvaluationSuite,
+    retry_policy: RetryPolicy | None = None,
+):
     return build_run_metadata(
         suite,
         "retry-test-system",
         "revision-1",
-        {"retry_policy": RetryPolicy(max_attempts=2, initial_delay_seconds=0).to_dict()},
         seed=5,
+        retry_policy=retry_policy,
     )
 
 
@@ -57,6 +60,15 @@ class AlwaysFailingSyncAdapter:
     def run(self, case: EvaluationCase) -> SystemOutput:
         self.calls += 1
         raise self.error
+
+
+class InvalidOutputAdapter:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, case: EvaluationCase) -> SystemOutput:
+        self.calls += 1
+        return SystemOutput("wrong-case", "answer")
 
 
 class FlakyAsyncAdapter:
@@ -106,25 +118,27 @@ def test_sync_runner_retries_transient_adapter_errors_and_reports_events() -> No
         adapter,
         [ExactMatchGrader()],
         retry_policy=policy,
-    ).run(suite, make_manifest(suite))
+    ).run(suite, make_manifest(suite, policy))
 
     assert adapter.calls == 3
     assert run.cases[0].graders[0].passed
     assert [(event.failed_attempt, event.next_attempt) for event in events] == [(1, 2), (2, 3)]
     assert all(event.case_id == "case-a" for event in events)
     assert all(event.delay_seconds == 0 for event in events)
+    assert run.manifest.configuration["retry_policy"] == policy.to_dict()
 
 
 def test_sync_runner_does_not_retry_non_retryable_exceptions() -> None:
     suite = make_suite()
     adapter = AlwaysFailingSyncAdapter(ValueError("invalid adapter input"))
+    policy = RetryPolicy(max_attempts=5, initial_delay_seconds=0)
 
     with pytest.raises(ValueError, match="invalid adapter input"):
         EvaluationRunner(
             adapter,
             [ExactMatchGrader()],
-            retry_policy=RetryPolicy(max_attempts=5, initial_delay_seconds=0),
-        ).run(suite, make_manifest(suite))
+            retry_policy=policy,
+        ).run(suite, make_manifest(suite, policy))
 
     assert adapter.calls == 1
 
@@ -143,17 +157,18 @@ def test_sync_runner_stops_after_total_attempt_budget_is_exhausted() -> None:
     suite = make_suite()
     adapter = AlwaysFailingSyncAdapter(ConnectionError("still offline"))
     events: list[RetryEvent] = []
+    policy = RetryPolicy(
+        max_attempts=2,
+        initial_delay_seconds=0,
+        on_retry=events.append,
+    )
 
     with pytest.raises(ConnectionError, match="still offline"):
         EvaluationRunner(
             adapter,
             [ExactMatchGrader()],
-            retry_policy=RetryPolicy(
-                max_attempts=2,
-                initial_delay_seconds=0,
-                on_retry=events.append,
-            ),
-        ).run(suite, make_manifest(suite))
+            retry_policy=policy,
+        ).run(suite, make_manifest(suite, policy))
 
     assert adapter.calls == 2
     assert len(events) == 1
@@ -164,13 +179,14 @@ def test_grader_errors_are_not_retried_by_adapter_policy() -> None:
     suite = make_suite()
     adapter = FlakySyncAdapter(failures=0)
     grader = FailingGrader()
+    policy = RetryPolicy(max_attempts=3, initial_delay_seconds=0)
 
     with pytest.raises(ConnectionError, match="grader failure"):
         EvaluationRunner(
             adapter,
             [grader],
-            retry_policy=RetryPolicy(max_attempts=3, initial_delay_seconds=0),
-        ).run(suite, make_manifest(suite))
+            retry_policy=policy,
+        ).run(suite, make_manifest(suite, policy))
 
     assert adapter.calls == 1
     assert grader.calls == 1
@@ -178,14 +194,29 @@ def test_grader_errors_are_not_retried_by_adapter_policy() -> None:
 
 def test_invalid_adapter_output_is_not_retried() -> None:
     suite = make_suite()
-    adapter = AlwaysFailingSyncAdapter(ConnectionError("will not be called"))
-    adapter.run = lambda case: SystemOutput("wrong-case", "answer")  # type: ignore[method-assign]
+    adapter = InvalidOutputAdapter()
+    policy = RetryPolicy(max_attempts=5, initial_delay_seconds=0)
 
     with pytest.raises(ValueError, match="case id"):
         EvaluationRunner(
             adapter,
             [ExactMatchGrader()],
-            retry_policy=RetryPolicy(max_attempts=5, initial_delay_seconds=0),
+            retry_policy=policy,
+        ).run(suite, make_manifest(suite, policy))
+
+    assert adapter.calls == 1
+
+
+def test_runner_rejects_retry_policy_not_recorded_in_manifest() -> None:
+    suite = make_suite()
+    policy = RetryPolicy(max_attempts=2, initial_delay_seconds=0)
+    adapter = FlakySyncAdapter(failures=0)
+
+    with pytest.raises(ValueError, match="build_run_metadata"):
+        EvaluationRunner(
+            adapter,
+            [ExactMatchGrader()],
+            retry_policy=policy,
         ).run(suite, make_manifest(suite))
 
     assert adapter.calls == 0
@@ -195,14 +226,15 @@ def test_async_runner_retries_transient_errors_and_preserves_result_order() -> N
     suite = make_suite()
     adapter = FlakyAsyncAdapter(failures=1)
     events: list[RetryEvent] = []
+    policy = RetryPolicy(max_attempts=2, initial_delay_seconds=0, on_retry=events.append)
     runner = AsyncEvaluationRunner(
         adapter,
         [ExactMatchGrader()],
         max_concurrency=2,
-        retry_policy=RetryPolicy(max_attempts=2, initial_delay_seconds=0, on_retry=events.append),
+        retry_policy=policy,
     )
 
-    run = asyncio.run(runner.run(suite, make_manifest(suite)))
+    run = asyncio.run(runner.run(suite, make_manifest(suite, policy)))
 
     assert adapter.calls == 2
     assert [item.case.id for item in run.cases] == ["case-a"]
@@ -214,15 +246,16 @@ def test_async_runner_retries_a_per_attempt_deadline_timeout() -> None:
     suite = make_suite()
     adapter = TimeoutOnceAsyncAdapter()
     events: list[RetryEvent] = []
+    policy = RetryPolicy(max_attempts=2, initial_delay_seconds=0, on_retry=events.append)
     runner = AsyncEvaluationRunner(
         adapter,
         [ExactMatchGrader()],
         max_concurrency=1,
         timeout_per_case_seconds=0.001,
-        retry_policy=RetryPolicy(max_attempts=2, initial_delay_seconds=0, on_retry=events.append),
+        retry_policy=policy,
     )
 
-    run = asyncio.run(runner.run(suite, make_manifest(suite)))
+    run = asyncio.run(runner.run(suite, make_manifest(suite, policy)))
 
     assert adapter.calls == 2
     assert run.cases[0].graders[0].passed
