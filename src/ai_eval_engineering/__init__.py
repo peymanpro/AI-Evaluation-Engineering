@@ -2,6 +2,7 @@
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .async_runner import AsyncEvaluationRunner, AsyncGrader, AsyncSystemAdapter
+from .budget import BudgetAssessment, BudgetViolation, RunBudgetPolicy, assess_run_budget
 from .contracts import validate_run_inputs, validate_suite
 from .domain import (
     AggregatedResult,
@@ -104,6 +105,8 @@ __all__ = [
     "AsyncOpenAICompatibleJudge",
     "AsyncOpenAIJudgeGrader",
     "AsyncSystemAdapter",
+    "BudgetAssessment",
+    "BudgetViolation",
     "CalibrationReport",
     "CaseResult",
     "ConfidenceInterval",
@@ -135,6 +138,7 @@ __all__ = [
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
     "RubricDimension",
+    "RunBudgetPolicy",
     "RunMetadata",
     "SystemAdapter",
     "SystemOutput",
@@ -142,6 +146,7 @@ __all__ = [
     "Trajectory",
     "TrajectoryEvent",
     "assess_online_evidence",
+    "assess_run_budget",
     "build_failure_regression_suite",
     "build_metric_contract",
     "building_software_adapter",

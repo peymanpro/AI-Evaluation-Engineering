@@ -173,6 +173,41 @@ use a fake async client and make no live model calls; calibration against repres
 human-labelled examples is still required.
 
 
+## Run budget assessment
+
+`RunBudgetPolicy` evaluates measured cost, token usage, and per-case latency against explicit
+limits. Cost and latency come from `SystemOutput.cost_usd` and `SystemOutput.latency_ms`;
+token usage is read from grader `metadata["usage"]` (the OpenAI-compatible judges record token
+counts when the provider returns them).
+
+```python
+from ai_eval_engineering import RunBudgetPolicy, assess_run_budget
+
+assessment = assess_run_budget(
+    run,
+    RunBudgetPolicy(
+        max_total_cost_usd=2.50,
+        max_case_cost_usd=0.50,
+        max_total_tokens=50_000,
+        max_case_latency_ms=15_000,
+    ),
+)
+
+if not assessment.passed:
+    print(assessment.status)
+    print(assessment.violations)
+    print(assessment.issues)
+```
+
+The status is one of `WITHIN_BUDGET`, `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or
+`INVALID_EVIDENCE`. Missing measurements are never counted as zero: when a configured limit needs
+data that a case did not record, the result is incomplete unless a known measurement already proves
+the budget was exceeded. Known token counts from multiple graders are summed per case.
+
+This is a post-run budget assessment, not a live spend limiter: it cannot stop a request before a
+provider charges for it. Costs are not inferred from token counts because provider/model pricing
+varies; adapters must record the actual cost they can measure.
+
 ## Promptfoo adapter
 
 Promptfoo v3 exports can be imported directly from the JSON file produced by
