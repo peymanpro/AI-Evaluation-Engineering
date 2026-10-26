@@ -27,6 +27,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
 - decision-grade paired release gates and failure-delta triage between system versions;
 - versioned multi-metric release-policy JSON files with strict validation, a packaged schema, and reproducible CLI-based release decisions;
+- failure-aware synchronous and asynchronous execution reports with explicit per-case errors and resumable completed cases;
 - persistent failure memory and class-aware calibration metrics;
 - installable Python distributions with PyPI Trusted Publishing support.
 
@@ -742,6 +743,38 @@ V1.1 adds a typed trajectory schema with replay validation and separate task-suc
 The committed `data/adversarial.json` suite is intentionally compact and human-readable. It demonstrates how risk-tagged cases become executable regression tests.
 
 The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
+
+## Failure-aware execution reports
+
+The ordinary `run()` methods remain fail-fast. Use `run_report()` when a batch should continue
+after an individual adapter, output-validation, or grader failure and record each outcome without
+turning failures into artificial zero scores.
+
+```python
+report = runner.run_report(
+    suite,
+    manifest,
+    checkpoint_path="artifacts/evaluation-checkpoint.json",
+)
+
+print(report.completed_count)
+print(report.failed_count)
+print(report.is_complete)
+
+for item in report.cases:
+    if not item.completed:
+        stage = item.failure.stage if item.failure is not None else "unknown"
+        print(item.case.id, item.status, stage)
+```
+
+A report preserves original suite order and can retain a validated system output plus earlier valid
+grader results when a later grader fails. Only fully completed cases are checkpointed, so failed
+cases can be attempted again when resuming. Async cancellation and checkpoint I/O errors still
+propagate instead of being misreported as ordinary per-case outcomes.
+
+A partial report cannot be converted to `EvaluationRun`, preventing incomplete evidence from
+silently entering release-gate comparisons. Exception messages can include provider details or user
+data; review and redact reports before storing or sharing them.
 
 ## Failure delta between versions
 

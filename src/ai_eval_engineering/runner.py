@@ -33,6 +33,12 @@ from .domain import (
     RunMetadata,
     SystemOutput,
 )
+from .execution_report import (
+    CaseExecutionResult,
+    EvaluationExecutionReport,
+    failure_result,
+    validate_execution_report,
+)
 from .retry import RetryPolicy, validate_retry_policy_manifest
 
 
@@ -451,6 +457,110 @@ class EvaluationRunner:
             stop_reason=controller.stop_reason,
         )
 
+
+
+    def run_report(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        checkpoint_path: str | Path | None = None,
+    ) -> EvaluationExecutionReport:
+        """Run every case and return explicit outcomes instead of failing fast.
+
+        Adapter, output-validation, grader-execution, and grader-contract
+        errors are recorded per case and do not become numeric grader scores.
+        Successfully completed cases are checkpointed as usual; failed cases
+        are retried on a later resume. Checkpoint I/O failures still abort the
+        operation because otherwise evidence could be lost silently.
+        """
+        validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
+        records: dict[str, CaseExecutionResult] = {}
+        for case in suite.cases:
+            saved = completed.get(case.id)
+            if saved is not None:
+                records[case.id] = CaseExecutionResult(
+                    case=case,
+                    status="completed",
+                    output=saved.output,
+                    graders=saved.graders,
+                )
+                continue
+
+            try:
+                output = self._run_adapter(case)
+            except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                records[case.id] = failure_result(case, "adapter_error", exc)
+                continue
+
+            try:
+                validate_system_output(case, output)
+            except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                records[case.id] = failure_result(
+                    case, "output_validation_error", exc
+                )
+                continue
+
+            graded: list[GraderResult] = []
+            failure_record: CaseExecutionResult | None = None
+            for grader in self._graders:
+                try:
+                    result = grader.grade(case, output)
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                    failure_record = failure_result(
+                        case,
+                        "grader_error",
+                        exc,
+                        output=output,
+                        graders=tuple(graded),
+                    )
+                    break
+
+                try:
+                    validate_grader_results((result,), case.id)
+                    if any(previous.grader == result.grader for previous in graded):
+                        raise ValueError(
+                            f"Duplicate grader name {result.grader!r} for case {case.id!r}."
+                        )
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                    failure_record = failure_result(
+                        case,
+                        "grader_contract_error",
+                        exc,
+                        output=output,
+                        graders=tuple(graded),
+                    )
+                    break
+                graded.append(result)
+
+            if failure_record is not None:
+                records[case.id] = failure_record
+                continue
+
+            graders = tuple(graded)
+            case_result = CaseResult(case=case, output=output, graders=graders)
+            completed[case.id] = case_result
+            records[case.id] = CaseExecutionResult(
+                case=case,
+                status="completed",
+                output=output,
+                graders=graders,
+            )
+            if checkpoint_path is not None:
+                save_run_checkpoint(checkpoint_path, suite, run_manifest, completed)
+
+        report = EvaluationExecutionReport(
+            manifest=run_manifest,
+            cases=tuple(records[case.id] for case in suite.cases),
+        )
+        validate_execution_report(report)
+        return report
 
 def persist_run(run: EvaluationRun, path: str | Path) -> None:
     payload = {
