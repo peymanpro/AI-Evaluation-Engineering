@@ -9,6 +9,8 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
+- atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
+- post-run budget assessments for recorded cost, token usage, and per-case latency;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
@@ -88,9 +90,9 @@ ai-eval budget candidate.json \
 ```
 
 `compare` and `budget` print machine-readable JSON and return exit code `0` only for a passing
-gate. A failed, inconclusive, or incomplete budget assessment returns `1`; invalid input or
-configuration returns `2`. The CLI uses the same Python APIs and versioned interchange schema as
-the library.
+gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
+for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
+returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
 
 ## Input contract validation
 
