@@ -5,6 +5,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 ## Unreleased
 
 ### Added
+- Versioned `release-policy-v1` JSON policies and a multi-metric `ai-eval compare --policy` mode with reproducible bootstrap settings, strict validation, and schema export; the legacy single-metric CLI remains supported.
 - Bounded-concurrency asynchronous evaluation runner with stable suite-order results, shared synchronous graders, and fail-fast cancellation semantics.
 - Optional per-case async adapter deadlines with cancellation and explicit failure instead of an indefinitely blocked run.
 - Preflight suite/manifest validation and per-case output/grader contract checks to prevent inconsistent or non-finite evidence from entering a run.
