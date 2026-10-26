@@ -8,12 +8,12 @@ from ai_eval_engineering.domain import (
     CaseResult,
     EvaluationCase,
     EvaluationRun,
-    GraderResult,
     EvaluationSuite,
+    GraderResult,
     SystemOutput,
 )
-from ai_eval_engineering.runner import build_run_metadata
 from ai_eval_engineering.result_import import write_run_json
+from ai_eval_engineering.runner import build_run_metadata
 
 
 def make_run(system_version: str, score: float) -> EvaluationRun:
