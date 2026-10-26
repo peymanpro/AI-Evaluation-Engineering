@@ -87,6 +87,11 @@ class InvalidScoreGrader:
         return GraderResult("invalid-score", True, float("nan"), "not valid evidence")
 
 
+class WrongCaseIdAdapter:
+    def run(self, case: EvaluationCase) -> SystemOutput:
+        return SystemOutput("unexpected-case-id", case.expected)
+
+
 class AlwaysFailingSemanticGrader:
     def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
         return GraderResult("semantic-check", False, 0.0, "valid negative result")
@@ -138,6 +143,22 @@ def test_grader_exception_preserves_output_and_prior_grader_results() -> None:
     assert "synthetic grader failure" in failed.failure.message
     assert report.failed_count == 1
     assert report.cases[2].status == "completed"
+
+
+def test_output_validation_failure_is_explicit_and_does_not_keep_invalid_output() -> None:
+    suite = make_suite()
+    report = EvaluationRunner(
+        WrongCaseIdAdapter(),
+        [ExactMatchGrader()],
+    ).run_report(suite, make_manifest(suite))
+
+    item = report.cases[0]
+    assert item.status == "output_validation_error"
+    assert item.output is None
+    assert item.graders == ()
+    assert item.failure is not None
+    assert item.failure.stage == "output_validation"
+    assert "case id" in item.failure.message
 
 
 def test_invalid_grader_contract_is_reported_separately() -> None:
@@ -254,7 +275,7 @@ def test_execution_report_rejects_status_failure_mismatch() -> None:
     payload = export_execution_report(report)
     payload["cases"][0]["status"] = "adapter_error"
 
-    with pytest.raises(ValueError, match="failure is required"):
+    with pytest.raises(TypeError, match="failure is required"):
         import_execution_report_payload(payload)
 
 
