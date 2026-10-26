@@ -370,3 +370,238 @@ def _read_case_token_usage(
             )
 
     return (sum(totals), False, None) if totals else (None, False, None)
+
+LiveBudgetStatus = Literal[
+    "COMPLETED",
+    "BUDGET_LIMIT_REACHED",
+    "INCOMPLETE_BUDGET_EVIDENCE",
+    "INVALID_BUDGET_EVIDENCE",
+]
+
+
+@dataclass(frozen=True)
+class BudgetedRunResult:
+    """Result of a run that may stop before every suite case is executed.
+
+    Partial results deliberately use a distinct type rather than EvaluationRun,
+    whose contract represents a completed suite.
+    """
+
+    manifest: RunMetadata
+    completed_cases: tuple[CaseResult, ...]
+    pending_case_ids: tuple[str, ...]
+    status: LiveBudgetStatus
+    known_cost_usd: float
+    known_tokens: int
+    stop_reason: str | None
+
+    @property
+    def all_cases_completed(self) -> bool:
+        """Whether every case in the suite has a recorded CaseResult."""
+        return not self.pending_case_ids
+
+    @property
+    def within_budget(self) -> bool:
+        """True only when the run completed without triggering a live guard."""
+        return self.status == "COMPLETED" and self.all_cases_completed
+
+
+class _LiveBudgetGuard:
+    """Track measurements as they become available and gate new case starts."""
+
+    def __init__(self, policy: RunBudgetPolicy) -> None:
+        if not isinstance(policy, RunBudgetPolicy):
+            raise TypeError("policy must be a RunBudgetPolicy.")
+        self.policy = policy
+        self._known_cost_usd = 0.0
+        self._known_tokens = 0
+        self._seen_output_ids: set[str] = set()
+        self._seen_usage_ids: set[str] = set()
+        self._stop_status: LiveBudgetStatus | None = None
+        self._stop_reason: str | None = None
+
+    @property
+    def known_cost_usd(self) -> float:
+        return self._known_cost_usd
+
+    @property
+    def known_tokens(self) -> int:
+        return self._known_tokens
+
+    @property
+    def stop_status(self) -> LiveBudgetStatus | None:
+        return self._stop_status
+
+    @property
+    def stop_reason(self) -> str | None:
+        return self._stop_reason
+
+    def can_start_case(self) -> bool:
+        """Return false once a configured limit is reached or evidence is missing."""
+        if self._stop_status is not None:
+            return False
+        if (
+            self.policy.max_total_cost_usd is not None
+            and self._known_cost_usd >= float(self.policy.max_total_cost_usd)
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative cost {self._known_cost_usd:.8g} USD has reached "
+                    f"the total cost cap {self.policy.max_total_cost_usd:.8g} USD"
+                ),
+            )
+        if (
+            self._stop_status is None
+            and self.policy.max_total_tokens is not None
+            and self._known_tokens >= self.policy.max_total_tokens
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative tokens {self._known_tokens} have reached "
+                    f"the total token cap {self.policy.max_total_tokens}"
+                ),
+            )
+        return self._stop_status is None
+
+    def observe_output(self, case_id: str, output: SystemOutput) -> None:
+        """Record cost and latency immediately after a validated adapter response."""
+        if case_id in self._seen_output_ids:
+            return
+        self._seen_output_ids.add(case_id)
+
+        cost_relevant = (
+            self.policy.max_total_cost_usd is not None
+            or self.policy.max_case_cost_usd is not None
+        )
+        cost_issues: list[str] = []
+        cost = _read_non_negative_measurement(
+            output.cost_usd, "cost_usd", case_id, cost_issues
+        )
+        if cost is not None:
+            self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
+            if (
+                self._stop_status is None
+                and self.policy.max_case_cost_usd is not None
+                and cost > float(self.policy.max_case_cost_usd)
+            ):
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"case {case_id!r} cost {cost:.8g} USD exceeded per-case cap "
+                        f"{self.policy.max_case_cost_usd:.8g} USD"
+                    ),
+                )
+            if (
+                self._stop_status is None
+                and self.policy.max_total_cost_usd is not None
+                and self._known_cost_usd >= float(self.policy.max_total_cost_usd)
+            ):
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"known cumulative cost {self._known_cost_usd:.8g} USD reached "
+                        f"the total cost cap {self.policy.max_total_cost_usd:.8g} USD"
+                    ),
+                )
+        elif cost_relevant:
+            if output.cost_usd is None:
+                self._stop(
+                    "INCOMPLETE_BUDGET_EVIDENCE",
+                    f"case {case_id!r} has no cost measurement required by the live budget policy",
+                )
+            else:
+                self._stop(
+                    "INVALID_BUDGET_EVIDENCE",
+                    cost_issues[0] if cost_issues else f"case {case_id!r} has invalid cost evidence",
+                )
+
+        latency_relevant = self.policy.max_case_latency_ms is not None
+        if latency_relevant:
+            latency_issues: list[str] = []
+            latency = _read_non_negative_measurement(
+                output.latency_ms, "latency_ms", case_id, latency_issues
+            )
+            if latency is None:
+                if output.latency_ms is None:
+                    self._stop(
+                        "INCOMPLETE_BUDGET_EVIDENCE",
+                        f"case {case_id!r} has no latency measurement required by the live budget policy",
+                    )
+                else:
+                    self._stop(
+                        "INVALID_BUDGET_EVIDENCE",
+                        latency_issues[0]
+                        if latency_issues
+                        else f"case {case_id!r} has invalid latency evidence",
+                    )
+            elif (
+                self._stop_status is None
+                and latency > float(self.policy.max_case_latency_ms)
+            ):
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"case {case_id!r} latency {latency:.8g} ms exceeded per-case cap "
+                        f"{self.policy.max_case_latency_ms:.8g} ms"
+                    ),
+                )
+
+    def observe_graders(self, result: CaseResult) -> None:
+        """Record grader usage after grading so token limits can stop later cases."""
+        case_id = result.case.id
+        if case_id in self._seen_usage_ids:
+            return
+        self._seen_usage_ids.add(case_id)
+        tokens, invalid, issue = _read_case_token_usage(result, case_id)
+        if tokens is None:
+            if self.policy.max_total_tokens is None:
+                return
+            if invalid:
+                self._stop(
+                    "INVALID_BUDGET_EVIDENCE",
+                    issue or f"case {case_id!r} has invalid token usage evidence",
+                )
+            else:
+                self._stop(
+                    "INCOMPLETE_BUDGET_EVIDENCE",
+                    issue or f"case {case_id!r} has no token usage required by the live budget policy",
+                )
+            return
+
+        self._known_tokens += tokens
+        if (
+            self._stop_status is None
+            and self.policy.max_total_tokens is not None
+            and self._known_tokens >= self.policy.max_total_tokens
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative tokens {self._known_tokens} reached "
+                    f"the total token cap {self.policy.max_total_tokens}"
+                ),
+            )
+
+    def observe_result(self, result: CaseResult) -> None:
+        """Account for an already completed result, such as a checkpoint entry."""
+        self.observe_output(result.case.id, result.output)
+        self.observe_graders(result)
+
+    def finish(self, pending_case_ids: tuple[str, ...]) -> LiveBudgetStatus:
+        """Return a status, ensuring unexplained partial results are never called complete."""
+        if self._stop_status is not None:
+            return self._stop_status
+        if pending_case_ids:
+            self._stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the run ended with cases not executed and no recorded budget stop reason",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
+        return "COMPLETED"
+
+    def _stop(self, status: LiveBudgetStatus, reason: str) -> None:
+        if self._stop_status is None:
+            self._stop_status = status
+            self._stop_reason = reason
