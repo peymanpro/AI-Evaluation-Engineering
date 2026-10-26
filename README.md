@@ -833,7 +833,7 @@ and production analytics adapters remain outside the current scope. The Promptfo
 uses synthetic fixtures; real provider output is only evaluated when the caller supplies real JSON
 exports.
 
-See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `docs/V1.1-CLOSURE.md`.
+See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, `docs/capability-roadmap.md`, and `docs/V1.1-CLOSURE.md`.
 
 ## Install from PyPI
 
