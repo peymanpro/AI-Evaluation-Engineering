@@ -12,6 +12,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
 - post-run budget assessments for recorded cost, token usage, and per-case latency;
+- offline slice analysis by case tag, risk category, or selected scalar metadata, with per-grader breakdowns;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
@@ -312,6 +313,45 @@ the budget was exceeded. Known token counts from multiple graders are summed per
 This is a post-run budget assessment, not a live spend limiter: it cannot stop a request before a
 provider charges for it. Costs are not inferred from token counts because provider/model pricing
 varies; adapters must record the actual cost they can measure.
+
+## Offline slice analysis
+
+A single pass rate can hide a serious failure in a smaller or higher-risk group. Use
+`analyze_run_slices` to break a completed run down by case tag, risk category, or one explicitly
+selected top-level metadata field. Each slice reports its case count, all-graders pass rate, mean
+case score, whether it meets the configured minimum case count, and per-grader pass rates/scores.
+
+```python
+from ai_eval_engineering import analyze_run_slices
+
+for item in analyze_run_slices(run, by="risk_category", min_cases=30):
+    print(
+        item.value,
+        item.case_count,
+        item.pass_rate,
+        item.meets_min_cases,
+    )
+    for grader in item.grader_metrics:
+        print("  ", grader.grader, grader.pass_rate, grader.mean_score)
+```
+
+Select only the slice dimensions relevant to the evaluation policy. Metadata slicing supports
+scalar values only; arbitrary nested objects are rejected rather than silently stringified. Missing
+classifications appear as a `None` slice by default, and small slices are retained and flagged rather
+than dropped. A case with multiple tags appears in each corresponding tag slice, so tag-slice counts
+are not mutually exclusive.
+
+The recorded-run CLI supports the same analysis without making provider calls:
+
+```bash
+ai-eval slices candidate.json --by risk_category --min-cases 30
+ai-eval slices candidate.json --by metadata.locale --exclude-missing
+```
+
+These summaries are descriptive diagnostics, not statistical significance tests. A small slice is
+not evidence of safety or quality; inspect the count and use a suitable inferential method before
+making comparative claims. Since selected metadata values are included in output summaries, do not
+slice on confidential or directly identifying metadata.
 
 ## Promptfoo adapter
 
