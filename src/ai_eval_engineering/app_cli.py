@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
-from typing import Sequence
 
 from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
@@ -30,7 +30,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     validate.add_argument("path", type=Path, help="path to an external-run-v1 JSON file")
 
-    schema = commands.add_parser(
+    commands.add_parser(
         "schema",
         help="print the packaged external-run JSON Schema",
     )
