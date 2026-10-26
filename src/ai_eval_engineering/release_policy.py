@@ -278,7 +278,7 @@ def _require_number(value: Any, location: str) -> float:
 def _require_integer(value: Any, location: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{location} must be an integer.")
-    return value
+    return int(value)
 
 
 def _reject_unknown_fields(
