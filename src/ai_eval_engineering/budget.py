@@ -797,6 +797,49 @@ class _ReservedBudgetController:
                 f"case {case_id!r} {source} has invalid recorded cost",
             )
 
+    def record_existing_component_cost(
+        self,
+        cost_value: Any,
+        *,
+        case_id: str,
+        source: str,
+        case_spent_usd: float,
+    ) -> float | None:
+        """Account for an existing checkpoint charge without a live reservation."""
+        if cost_value is None:
+            self.stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                f"checkpoint case {case_id!r} {source} has no cost measurement",
+            )
+            return None
+        issues: list[str] = []
+        cost = _read_non_negative_measurement(cost_value, "cost_usd", case_id, issues)
+        if cost is None:
+            self.stop(
+                "INVALID_BUDGET_EVIDENCE",
+                issues[0] if issues else f"checkpoint case {case_id!r} has invalid cost",
+            )
+            return None
+        self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
+        case_total = math.fsum((case_spent_usd, cost))
+        if case_total > float(self.policy.max_case_cost_usd):
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"checkpoint case {case_id!r} has measured cost {case_total:.8g} USD "
+                    f"above its case cap {self.policy.max_case_cost_usd:.8g} USD"
+                ),
+            )
+        if self._known_cost_usd > float(self.policy.max_total_cost_usd):
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"checkpointed cost {self._known_cost_usd:.8g} USD exceeds total cap "
+                    f"{self.policy.max_total_cost_usd:.8g} USD"
+                ),
+            )
+        return cost
+
     def stop(self, status: ReservedBudgetStatus, reason: str) -> None:
         """Keep the strongest evidence-based conclusion regardless of async timing."""
         priority: dict[ReservedBudgetStatus, int] = {
