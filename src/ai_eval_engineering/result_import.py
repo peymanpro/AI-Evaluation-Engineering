@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from importlib.resources import files
 import math
 import tempfile
 from pathlib import Path
@@ -19,6 +20,22 @@ from .domain import (
 )
 
 EXTERNAL_RUN_SCHEMA_VERSION = 1
+
+
+def get_external_run_schema() -> dict[str, Any]:
+    """Load the versioned external-run JSON Schema from the installed package."""
+    resource = (
+        files("ai_eval_engineering")
+        .joinpath("schemas")
+        .joinpath("external-run-v1.schema.json")
+    )
+    try:
+        schema = json.loads(resource.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        raise RuntimeError("The packaged external-run JSON Schema is unavailable or invalid.") from exc
+    if not isinstance(schema, dict):
+        raise RuntimeError("The packaged external-run JSON Schema must be a JSON object.")
+    return schema
 
 
 def import_run_payload(payload: Any) -> EvaluationRun:
