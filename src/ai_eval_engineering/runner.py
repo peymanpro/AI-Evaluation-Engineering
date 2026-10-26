@@ -182,13 +182,13 @@ class EvaluationRunner:
 
             try:
                 output = self._run_adapter(case)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
                 records[case.id] = failure_result(case, "adapter_error", exc)
                 continue
 
             try:
                 validate_system_output(case, output)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
                 records[case.id] = failure_result(
                     case, "output_validation_error", exc
                 )
@@ -199,7 +199,7 @@ class EvaluationRunner:
             for grader in self._graders:
                 try:
                     result = grader.grade(case, output)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
                     failure_record = failure_result(
                         case,
                         "grader_error",
@@ -215,7 +215,7 @@ class EvaluationRunner:
                         raise ValueError(
                             f"Duplicate grader name {result.grader!r} for case {case.id!r}."
                         )
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
                     failure_record = failure_result(
                         case,
                         "grader_contract_error",
