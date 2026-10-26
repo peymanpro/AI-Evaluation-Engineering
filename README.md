@@ -42,6 +42,7 @@ The framework preserves raw case-level observations so aggregate claims can be i
 ## Quick start
 
     pip install -e ".[dev]"
+    # For the optional live OpenAI-compatible LLM judge: pip install -e ".[dev,openai]"
     pytest
     ai-eval-demo
     python examples/security_regression.py
@@ -221,6 +222,67 @@ A persistent failure's score delta is descriptive only; whether a score increase
 depends on the grader's definition. A failure is classified as resolved only when the corresponding
 grader ran and passed in the candidate. Both runs must use the same system name, suite version,
 case definitions, and per-case grader set.
+
+## OpenAI-compatible LLM judge
+
+The core package now includes an optional, real model-backed judge adapter. It uses the OpenAI
+Python SDK with Chat Completions Structured Outputs, validates every returned field against the
+rubric, and records provider/model/request/token-usage metadata without storing the raw API
+response. The base installation remains dependency-free; install the optional SDK extra when
+you need a live provider call.
+
+```bash
+pip install "ai-evaluation-engineering[openai]"
+```
+
+Set `OPENAI_API_KEY` in your environment, then use the judge directly or wrap it as a grader for
+`EvaluationRunner`:
+
+```python
+from ai_eval_engineering import (
+    EvaluationRubric,
+    OpenAICompatibleJudge,
+    OpenAIJudgeGrader,
+    RubricDimension,
+)
+
+rubric = EvaluationRubric(
+    "answer-quality",
+    (
+        RubricDimension("correctness", "Matches the verified answer.", weight=0.7),
+        RubricDimension("clarity", "Is concise and understandable.", weight=0.3),
+    ),
+)
+
+judge = OpenAICompatibleJudge(
+    model="gpt-4o-mini",
+    temperature=0.0,
+    timeout=30.0,
+    max_retries=2,
+)
+grader = OpenAIJudgeGrader(
+    judge,
+    rubric,
+    name="llm_quality",
+    pass_labels=("pass", "passed"),
+)
+
+# case and output are EvaluationCase and SystemOutput instances
+result = grader.grade(case, output)
+print(result.passed, result.score, result.details)
+print(result.metadata.get("usage"))
+```
+
+The grader does not infer success from a high score alone: `passed` is true only when the label
+matches the explicitly configured `pass_labels`. The numeric score is retained separately for
+analysis and release gates. The adapter requires an endpoint/model that supports JSON Schema
+Structured Outputs; a custom OpenAI-compatible endpoint can be supplied via `base_url` or an
+injected client. See the [OpenAI Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat).
+
+Live judge calls send the case input, expected value, model output, and trace to the configured
+provider and can incur API charges. Review those fields for sensitive data. CI tests use an
+injected fake client and make no provider calls, so a green test suite validates integration
+mechanics, not the quality of a particular model judge.
 
 ## Judge calibration
 
