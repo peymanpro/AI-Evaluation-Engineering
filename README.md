@@ -127,12 +127,51 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The adapter's `run` method must be async and return a `SystemOutput`. Existing graders remain
-synchronous and execute on the event loop; use fast, non-blocking graders here. If an adapter or
-grader raises, pending worker tasks are cancelled and the runner raises instead of returning a
-partial run. A timeout cancels the current adapter coroutine and fails the run; it does not return a
-partial `EvaluationRun`. The async runner does not silently retry requests because retry safety and
-rate limits are provider-specific. See the [async demo](examples/async_evaluation.py).
+The adapter's `run` method must be async and return a `SystemOutput`. Both synchronous and
+asynchronous graders are accepted. Synchronous graders execute on the event loop, so keep them fast
+and non-blocking; asynchronous graders are awaited. If an adapter or grader raises, pending worker
+tasks are cancelled and the runner raises instead of returning a partial run. A timeout cancels the
+current adapter coroutine and fails the run; it does not return a partial `EvaluationRun`. The async
+runner does not silently retry requests because retry safety and rate limits are provider-specific.
+See the [async demo](examples/async_evaluation.py).
+
+### Asynchronous LLM judge
+
+For model-based grading, `AsyncOpenAICompatibleJudge` uses the SDK's native `AsyncOpenAI` client,
+and `AsyncOpenAIJudgeGrader` adapts it to the async runner. Install the optional extra with
+`pip install "ai-evaluation-engineering[openai]"`. The request uses the same JSON Schema structured
+output contract, evidence serialization, rubric validation, and explicit label-to-pass mapping as
+the synchronous judge. No API call is made until `await grader.grade(...)` or an async run executes.
+
+```python
+from ai_eval_engineering import AsyncOpenAICompatibleJudge, AsyncOpenAIJudgeGrader
+
+judge = AsyncOpenAICompatibleJudge(
+    model="your-model",
+    api_key="YOUR_API_KEY",
+    timeout=30.0,
+    max_retries=2,
+)
+judge_grader = AsyncOpenAIJudgeGrader(
+    judge,
+    rubric,
+    name="quality_judge",
+    pass_labels=("pass", "passed"),
+)
+runner = AsyncEvaluationRunner(
+    async_system,
+    [judge_grader],
+    max_concurrency=8,
+    timeout_per_case_seconds=45.0,
+)
+run = await runner.run(suite, manifest)
+```
+
+The runner deadline covers the async system-adapter call; the judge's own `timeout` configures
+its provider request. Choose the limits with your rate limits and latency budget in mind. CI tests
+use a fake async client and make no live model calls; calibration against representative
+human-labelled examples is still required.
+
 
 ## Promptfoo adapter
 
