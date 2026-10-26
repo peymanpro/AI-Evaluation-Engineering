@@ -258,6 +258,8 @@ class JsonFieldGrader:
     numbers. The grader does not echo field values into details or metadata.
     """
 
+    budget_cost_free = True
+
     def __init__(
         self,
         path: str,
@@ -404,6 +406,13 @@ class CompositeGrader:
         self.graders = tuple(graders)
         if not self.graders:
             raise ValueError("At least one component grader is required.")
+        # A composite is safe in reserved-budget mode only when every child
+        # explicitly declares that it makes no billable calls. Unknown/custom
+        # graders remain conservatively non-free.
+        self.budget_cost_free = all(
+            getattr(grader, "budget_cost_free", False) is True
+            for grader in self.graders
+        )
         if not all(callable(getattr(grader, "grade", None)) for grader in self.graders):
             raise TypeError("Every component must provide a callable grade method.")
         if pass_mode not in {"all", "any", "score_threshold"}:
