@@ -289,6 +289,7 @@ class EvaluationRunner:
             run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
 
         controller = _ReservedBudgetController(policy)
+        incomplete_cases: set[str] = set()
         for case in suite.cases:
             saved = completed.get(case.id)
             if saved is None:
@@ -336,6 +337,7 @@ class EvaluationRunner:
                 controller.release_case(allocation, case_spent)
                 break
 
+            incomplete_cases.add(case.id)
             validate_system_output(case, output)
             output_cost = controller.record_component_cost(
                 output.cost_usd,
@@ -415,6 +417,7 @@ class EvaluationRunner:
             validate_grader_results(graded, case.id)
             case_result = CaseResult(case=case, output=output, graders=graded)
             completed[case.id] = case_result
+            incomplete_cases.discard(case.id)
             if checkpoint_path is not None:
                 save_run_checkpoint(checkpoint_path, suite, run_manifest, completed)
             controller.release_case(allocation, case_spent)
@@ -433,6 +436,9 @@ class EvaluationRunner:
             manifest=run_manifest,
             completed_cases=ordered_completed,
             pending_case_ids=pending_case_ids,
+            incomplete_case_ids=tuple(
+                case.id for case in suite.cases if case.id in incomplete_cases
+            ),
             status=status,
             known_cost_usd=controller.known_cost_usd,
             reserved_cost_usd=controller.reserved_cost_usd,
