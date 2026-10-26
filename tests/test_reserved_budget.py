@@ -432,7 +432,7 @@ def test_async_missing_cost_evidence_is_not_hidden_by_concurrent_budget_stop() -
 
     class MissingThenDeclinedAdapter:
         def __init__(self) -> None:
-            self.missing_cost_returned = asyncio.Event()
+            self.sibling_declined = asyncio.Event()
 
         async def run(self, case: EvaluationCase) -> SystemOutput:
             raise AssertionError("reserved execution must use run_with_budget")
@@ -441,17 +441,16 @@ def test_async_missing_cost_evidence_is_not_hidden_by_concurrent_budget_stop() -
             self, case: EvaluationCase, *, max_cost_usd: float
         ) -> SystemOutput:
             if case.id == "case-0":
-                # Let the sibling enter its adapter before returning ambiguous
-                # cost evidence; then the sibling's refusal races with our stop.
-                await asyncio.sleep(0)
-                self.missing_cost_returned.set()
+                # Ensure the sibling first records BUDGET_LIMIT_REACHED, then
+                # return missing charge evidence to test status-priority logic.
+                await self.sibling_declined.wait()
                 return SystemOutput(
                     case_id=case.id,
                     output=case.input["answer"],
                     latency_ms=10.0,
                     cost_usd=None,
                 )
-            await self.missing_cost_returned.wait()
+            self.sibling_declined.set()
             raise RequestBudgetExceeded("known quote does not fit its reservation")
 
     async def run_scenario():
