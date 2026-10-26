@@ -621,6 +621,13 @@ class _LiveBudgetGuard:
         return "COMPLETED"
 
     def _stop(self, status: LiveBudgetStatus, reason: str) -> None:
-        if self._stop_status is None:
+        """Keep the strongest conclusion independent of async response ordering."""
+        priority: dict[LiveBudgetStatus, int] = {
+            "COMPLETED": 0,
+            "INCOMPLETE_BUDGET_EVIDENCE": 1,
+            "BUDGET_LIMIT_REACHED": 2,
+            "INVALID_BUDGET_EVIDENCE": 3,
+        }
+        if self._stop_status is None or priority[status] > priority[self._stop_status]:
             self._stop_status = status
             self._stop_reason = reason
