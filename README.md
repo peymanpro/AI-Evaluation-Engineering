@@ -72,19 +72,25 @@ The `ai-eval` command works with saved external-run-v1 JSON files and makes no p
 It complements `ai-eval-demo`, which remains a deterministic example that generates a demo report.
 
 ```bash
-# Inspect the available commands and print the packaged JSON Schema
+# Inspect the available commands and print the packaged JSON Schemas
 ai-eval --help
 ai-eval schema > external-run-v1.schema.json
+ai-eval suite-schema > evaluation-suite-v1.schema.json
+ai-eval release-policy-schema > release-policy-v1.schema.json
 
 # Validate a recorded run file
 ai-eval validate-run run.json
 
-# Compare a baseline and candidate using the grader's numeric score
+# Backward-compatible single-metric comparison
 ai-eval compare baseline.json candidate.json \
   --metric quality \
   --direction higher_is_better \
   --max-allowed-regression 0.02 \
   --min-cases 30
+
+# Multi-metric release gate from a versioned policy file
+ai-eval compare baseline.json candidate.json \
+  --policy examples/policies/quality-latency-safety-v1.json
 
 # Enforce recorded cost, token, and latency limits in CI
 ai-eval budget candidate.json \
@@ -97,6 +103,16 @@ ai-eval budget candidate.json \
 gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
 for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
 returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
+
+For multi-metric comparisons, `release-policy-v1` stores unique grader metric names, each metric's
+direction, regression tolerance and minimum sample count, plus the confidence level, bootstrap
+resample count and deterministic seed. These settings travel together in the policy file; CLI
+overrides such as `--min-cases` or `--seed` are rejected in policy mode rather than silently
+ignored. Every named grader must be present exactly once for every case in both runs. The release
+gate applies its existing Bonferroni correction across configured metrics. The sample policy
+illustrates quality, latency and safety checks; replace those names and limits with the grader names
+and tolerances your saved runs actually record. A policy file defines rules, not evidence: it does
+not create or infer any quality, safety or latency measurements.
 
 ## Versioned evaluation suites
 
