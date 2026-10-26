@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from importlib.resources import files
 import math
 import tempfile
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ def get_external_run_schema() -> dict[str, Any]:
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         raise RuntimeError("The packaged external-run JSON Schema is unavailable or invalid.") from exc
     if not isinstance(schema, dict):
-        raise RuntimeError("The packaged external-run JSON Schema must be a JSON object.")
+        raise TypeError("The packaged external-run JSON Schema must be a JSON object.")
     return schema
 
 
