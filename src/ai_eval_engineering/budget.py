@@ -733,10 +733,13 @@ class _ReservedBudgetController:
             return None
         remaining = self.remaining_usd
         if remaining <= 0.0:
-            self.stop(
-                "BUDGET_LIMIT_REACHED",
-                f"no unreserved budget remains under total cap {self.policy.max_total_cost_usd:.8g} USD",
-            )
+            # Active cases already own reservations. Let those bounded requests
+            # finish; report the exhausted budget after their batch settles.
+            if self._reserved_cost_usd <= 0.0:
+                self.stop(
+                    "BUDGET_LIMIT_REACHED",
+                    f"no unreserved budget remains under total cap {self.policy.max_total_cost_usd:.8g} USD",
+                )
             return None
         allocation = min(float(self.policy.max_case_cost_usd), remaining)
         self._reserved_cost_usd = math.fsum((self._reserved_cost_usd, allocation))
