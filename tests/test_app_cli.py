@@ -220,10 +220,14 @@ def test_compare_command_reads_policy_file_and_gates_multiple_metrics(
         "quality",
         "latency_ms",
     ]
-    assert output["policy"] == {
-        "name": "quality-and-latency",
-        "schema_version": 1,
-    }
+    assert output["policy"]["schema_version"] == 1
+    assert output["policy"]["policy"]["name"] == "quality-and-latency"
+    assert output["policy"]["policy"]["resamples"] == 500
+    assert output["policy"]["policy"]["seed"] == 13
+    assert [item["metric"] for item in output["policy"]["policy"]["metrics"]] == [
+        "quality",
+        "latency_ms",
+    ]
     assert output["confidence_level"] == 0.95
     assert all(metric["sample_size"] == 3 for metric in output["metrics"])
 
