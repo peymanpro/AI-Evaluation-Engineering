@@ -26,6 +26,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
 - decision-grade paired release gates and failure-delta triage between system versions;
+- versioned multi-metric release-policy JSON files with strict validation, a packaged schema, and reproducible CLI-based release decisions;
 - persistent failure memory and class-aware calibration metrics;
 - installable Python distributions with PyPI Trusted Publishing support.
 
@@ -76,6 +77,8 @@ It complements `ai-eval-demo`, which remains a deterministic example that genera
 # Inspect the available commands and print the packaged JSON Schema
 ai-eval --help
 ai-eval schema > external-run-v1.schema.json
+ai-eval suite-schema > evaluation-suite-v1.schema.json
+ai-eval release-policy-schema > release-policy-v1.schema.json
 
 # Validate a recorded run file
 ai-eval validate-run run.json
@@ -86,6 +89,10 @@ ai-eval compare baseline.json candidate.json \
   --direction higher_is_better \
   --max-allowed-regression 0.02 \
   --min-cases 30
+
+# Multi-metric release gate from a versioned policy file
+ai-eval compare baseline.json candidate.json \
+  --policy examples/policies/quality-latency-safety-v1.json
 
 # Enforce recorded cost, token, and latency limits in CI
 ai-eval budget candidate.json \
@@ -98,6 +105,8 @@ ai-eval budget candidate.json \
 gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
 for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
 returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
+
+For multi-metric gates, `--policy` loads a versioned `release-policy-v1` file containing metric directions, regression tolerances, minimum sample sizes, confidence, bootstrap resamples, and a seed. Policy mode rejects per-command metric overrides instead of silently ignoring them, and the result JSON includes the complete policy payload for traceability.
 
 ## Versioned run interchange
 
