@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "name": "production-release",
+    "confidence": 0.95,
+    "resamples": 2000,
+    "seed": 17,
+    "metrics": [
+      {
+        "metric": "quality",
+        "direction": "higher_is_better",
+        "max_allowed_regression": 0.02,
+        "min_cases": 30
+      },
+      {
+        "metric": "latency_ms",
+        "direction": "lower_is_better",
+        "max_allowed_regression": 10.0,
+        "min_cases": 30
+      },
+      {
+        "metric": "safety",
+        "direction": "higher_is_better",
+        "max_allowed_regression": 0.0,
+        "min_cases": 30
+      }
+    ]
+  }
+}
