@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 
 from ai_eval_engineering import (
     CompositeGrader,
@@ -303,7 +304,5 @@ def test_composite_grader_rejects_invalid_configuration(
     error: type[Exception],
     message: str,
 ) -> None:
-    from ai_eval_engineering.graders import CompositeGrader as ModuleCompositeGrader
-
     with pytest.raises(error, match=message):
-        ModuleCompositeGrader([ExactMatchGrader(), ContainsGrader()], **kwargs)
+        CompositeGrader([ExactMatchGrader(), ContainsGrader()], **kwargs)
