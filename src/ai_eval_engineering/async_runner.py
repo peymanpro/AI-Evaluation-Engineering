@@ -20,12 +20,6 @@ from .budget import (
 )
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
-from .execution_report import (
-    CaseExecutionResult,
-    EvaluationExecutionReport,
-    failure_result,
-    validate_execution_report,
-)
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -34,6 +28,12 @@ from .domain import (
     GraderResult,
     RunMetadata,
     SystemOutput,
+)
+from .execution_report import (
+    CaseExecutionResult,
+    EvaluationExecutionReport,
+    failure_result,
+    validate_execution_report,
 )
 from .retry import RetryPolicy, validate_retry_policy_manifest
 from .runner import Grader
