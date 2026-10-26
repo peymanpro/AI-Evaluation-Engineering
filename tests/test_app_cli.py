@@ -224,7 +224,7 @@ def test_validate_suite_command_returns_two_for_invalid_file(
     tmp_path: Path, capsys
 ) -> None:
     path = tmp_path / "invalid-suite.json"
-    path.write_text('{"schema_version": 1, "suite": {"version": "v1", "cases": []}}', encoding="utf-8")
+    path.write_text('{"schema_version": 99, "suite": {"version": "v1", "cases": []}}', encoding="utf-8")
 
     assert main(["validate-suite", str(path)]) == 2
-    assert "unsupported fields" not in capsys.readouterr().err
+    assert "schema_version" in capsys.readouterr().err
