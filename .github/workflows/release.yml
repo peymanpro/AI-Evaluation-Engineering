@@ -133,7 +133,7 @@ jobs:
           python -m pip install --no-deps --target "$install_dir" dist/*.whl
           (
             cd "$RUNNER_TEMP"
-            PYTHONPATH="$install_dir" python -c 'import ai_eval_engineering; assert hasattr(ai_eval_engineering, "OpenAICompatibleJudge"); print("Built wheel import smoke test passed.")'
+            PYTHONPATH="$install_dir" python -c 'import ai_eval_engineering; assert hasattr(ai_eval_engineering, "OpenAICompatibleJudge"); assert ai_eval_engineering.get_external_run_schema()["properties"]["schema_version"]["const"] == 1; print("Built wheel API/schema smoke test passed.")'
           )
 
       - name: Publish GitHub Release if not already published
