@@ -13,7 +13,6 @@ from typing import Any, Protocol
 
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
-from .retry import RetryPolicy, validate_retry_policy_manifest
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -24,6 +23,7 @@ from .domain import (
     RunMetadata,
     SystemOutput,
 )
+from .retry import RetryPolicy, validate_retry_policy_manifest
 
 
 class SystemAdapter(Protocol):
