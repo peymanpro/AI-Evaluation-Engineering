@@ -9,8 +9,8 @@ from ai_eval_engineering import (
     GraderResult,
     RunMetadata,
     SystemOutput,
+    analyze_run_slices,
 )
-from ai_eval_engineering.slices import analyze_run_slices
 
 
 def make_run() -> EvaluationRun:
