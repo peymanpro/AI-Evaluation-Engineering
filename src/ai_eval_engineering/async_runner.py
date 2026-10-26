@@ -360,6 +360,7 @@ class AsyncEvaluationRunner:
             run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
 
         controller = _ReservedBudgetController(policy)
+        incomplete_cases: set[str] = set()
         results: list[CaseResult | None] = [None] * len(suite.cases)
         todo: list[EvaluationCase] = []
         for index, case in enumerate(suite.cases):
@@ -429,6 +430,7 @@ class AsyncEvaluationRunner:
                 controller.release_case(allocation, case_spent)
                 return
 
+            incomplete_cases.add(case.id)
             validate_system_output(case, output)
             output_cost = controller.record_component_cost(
                 output.cost_usd,
@@ -518,6 +520,7 @@ class AsyncEvaluationRunner:
             validate_grader_results(graded, case.id)
             case_result = CaseResult(case=case, output=output, graders=graded)
             completed[case.id] = case_result
+            incomplete_cases.discard(case.id)
             index = next(i for i, item in enumerate(suite.cases) if item.id == case.id)
             results[index] = case_result
             if checkpoint_path is not None:
@@ -564,6 +567,9 @@ class AsyncEvaluationRunner:
             manifest=run_manifest,
             completed_cases=ordered_completed,
             pending_case_ids=pending_case_ids,
+            incomplete_case_ids=tuple(
+                case.id for case in suite.cases if case.id in incomplete_cases
+            ),
             status=status,
             known_cost_usd=controller.known_cost_usd,
             reserved_cost_usd=controller.reserved_cost_usd,
