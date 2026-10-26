@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/peymanpro/AI-Evaluation-Engineering/blob/main/schemas/execution-report-v1.schema.json",
+  "title": "AI Evaluation Engineering Execution Report",
+  "description": "Version 1 interchange envelope for complete and partial per-case evaluation outcomes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest", "cases"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "manifest": {"$ref": "#/$defs/manifest"},
+    "cases": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/caseExecution"}
+    }
+  },
+  "$defs": {
+    "jsonValue": {
+      "description": "Any JSON value. Non-finite numeric values are not valid JSON numbers.",
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "array", "items": {"$ref": "#/$defs/jsonValue"}},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/jsonValue"}}
+      ]
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/jsonValue"}
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "suite_version", "system_name", "system_version", "timestamp_utc"],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "suite_version": {"type": "string", "minLength": 1},
+        "system_name": {"type": "string", "minLength": 1},
+        "system_version": {"type": "string", "minLength": 1},
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "configuration": {"$ref": "#/$defs/jsonObject"},
+        "environment": {"$ref": "#/$defs/jsonObject"},
+        "seed": {
+          "oneOf": [{"type": "integer"}, {"type": "null"}]
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "input"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "input": {"$ref": "#/$defs/jsonObject"},
+        "expected": {"$ref": "#/$defs/jsonValue"},
+        "metadata": {"$ref": "#/$defs/jsonObject"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "risk_category": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "output"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "output": {"$ref": "#/$defs/jsonValue"},
+        "latency_ms": {
+          "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+        },
+        "cost_usd": {
+          "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+        },
+        "trace": {"type": "array", "items": {"$ref": "#/$defs/jsonObject"}}
+      }
+    },
+    "grader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grader", "passed", "score", "details"],
+      "properties": {
+        "grader": {"type": "string", "minLength": 1},
+        "passed": {"type": "boolean"},
+        "score": {"type": "number"},
+        "details": {"type": "string"},
+        "metadata": {"$ref": "#/$defs/jsonObject"}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "exception_type", "message"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["adapter", "output_validation", "grader_execution", "grader_contract"]
+        },
+        "exception_type": {"type": "string", "minLength": 1},
+        "message": {"type": "string"}
+      }
+    },
+    "caseExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case", "status", "output", "graders", "failure"],
+      "properties": {
+        "case": {"$ref": "#/$defs/case"},
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "adapter_error",
+            "output_validation_error",
+            "grader_error",
+            "grader_contract_error"
+          ]
+        },
+        "output": {
+          "oneOf": [{"$ref": "#/$defs/output"}, {"type": "null"}]
+        },
+        "graders": {"type": "array", "items": {"$ref": "#/$defs/grader"}},
+        "failure": {
+          "oneOf": [{"$ref": "#/$defs/failure"}, {"type": "null"}]
+        }
+      }
+    }
+  }
+}
