@@ -1,7 +1,7 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
-from .async_runner import AsyncEvaluationRunner, AsyncSystemAdapter
+from .async_runner import AsyncEvaluationRunner, AsyncGrader, AsyncSystemAdapter
 from .contracts import validate_run_inputs, validate_suite
 from .domain import (
     AggregatedResult,
@@ -59,6 +59,8 @@ from .online import (
     build_metric_contract,
 )
 from .openai_judge import (
+    AsyncOpenAICompatibleJudge,
+    AsyncOpenAIJudgeGrader,
     JudgeProviderError,
     OpenAICompatibleJudge,
     OpenAIJudgeGrader,
@@ -98,6 +100,9 @@ __all__ = [
     "AgentSuccessCriteria",
     "AggregatedResult",
     "AsyncEvaluationRunner",
+    "AsyncGrader",
+    "AsyncOpenAICompatibleJudge",
+    "AsyncOpenAIJudgeGrader",
     "AsyncSystemAdapter",
     "CalibrationReport",
     "CaseResult",
