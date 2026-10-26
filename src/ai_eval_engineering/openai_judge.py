@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import math
 from typing import Any
@@ -66,13 +67,14 @@ class OpenAICompatibleJudge:
 
         if client is None:
             try:
-                from openai import OpenAI
-            except ImportError as exc:
+                sdk = importlib.import_module("openai")
+                openai_client = sdk.OpenAI
+            except (ImportError, AttributeError) as exc:
                 raise ImportError(
                     "The OpenAI-compatible judge requires the optional dependency. "
                     "Install it with: pip install 'ai-evaluation-engineering[openai]'"
                 ) from exc
-            client = OpenAI(
+            client = openai_client(
                 api_key=api_key,
                 base_url=base_url,
                 timeout=float(timeout),
