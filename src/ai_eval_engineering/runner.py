@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from .budget import BudgetedRunResult, RunBudgetPolicy, _LiveBudgetGuard
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
@@ -138,6 +139,76 @@ class EvaluationRunner:
         return EvaluationRun(
             manifest=run_manifest,
             cases=tuple(completed[case.id] for case in suite.cases),
+        )
+
+
+    def run_budgeted(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        policy: RunBudgetPolicy,
+        checkpoint_path: str | Path | None = None,
+    ) -> BudgetedRunResult:
+        """Run cases until a live budget guard stops scheduling new work.
+
+        This opt-in method can return a partial result when the budget is reached
+        or required usage evidence is missing. Partial results are not represented
+        as an EvaluationRun. Cost/latency measurements are observed after each
+        adapter response; token usage is observed after grading.
+        """
+        validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
+        if not isinstance(policy, RunBudgetPolicy):
+            raise TypeError("policy must be a RunBudgetPolicy.")
+
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
+        guard = _LiveBudgetGuard(policy)
+        for case in suite.cases:
+            saved_result = completed.get(case.id)
+            if saved_result is not None:
+                guard.observe_result(saved_result)
+
+        for case in suite.cases:
+            if case.id in completed:
+                continue
+            if not guard.can_start_case():
+                break
+
+            output = self._run_adapter(case)
+            validate_system_output(case, output)
+            guard.observe_output(case.id, output)
+            grader_results = tuple(grader.grade(case, output) for grader in self._graders)
+            validate_grader_results(grader_results, case.id)
+            case_result = CaseResult(
+                case=case,
+                output=output,
+                graders=grader_results,
+            )
+            guard.observe_graders(case_result)
+            completed[case.id] = case_result
+            if checkpoint_path is not None:
+                save_run_checkpoint(checkpoint_path, suite, run_manifest, completed)
+
+        ordered_completed = tuple(
+            completed[case.id] for case in suite.cases if case.id in completed
+        )
+        pending_case_ids = tuple(
+            case.id for case in suite.cases if case.id not in completed
+        )
+        status = guard.finish(pending_case_ids)
+        return BudgetedRunResult(
+            manifest=run_manifest,
+            completed_cases=ordered_completed,
+            pending_case_ids=pending_case_ids,
+            status=status,
+            known_cost_usd=guard.known_cost_usd,
+            known_tokens=guard.known_tokens,
+            stop_reason=guard.stop_reason,
         )
 
 
