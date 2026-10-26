@@ -203,7 +203,7 @@ def test_empty_completion_is_reported() -> None:
             result_json(dimension_scores={"correctness": 1.0}),
             "dimension scores must match the rubric",
         ),
-        (result_json(score=1.5), "score must be finite and within [0, 1]"),
+        (result_json(score=1.5), r"score must be finite and within \[0, 1\]"),
         (result_json(label=" "), "label must not be empty"),
         (result_json(score=True), "score must be numeric"),
     ],
