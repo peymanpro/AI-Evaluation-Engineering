@@ -56,6 +56,11 @@ from .online import (
     Outcome,
     build_metric_contract,
 )
+from .openai_judge import (
+    JudgeProviderError,
+    OpenAICompatibleJudge,
+    OpenAIJudgeGrader,
+)
 from .promptfoo import (
     SUPPORTED_PROMPTFOO_RESULT_VERSION,
     import_promptfoo_payload,
@@ -107,11 +112,14 @@ __all__ = [
     "GraderResult",
     "IntegrationSpec",
     "Judge",
+    "JudgeProviderError",
     "JudgeResult",
     "LabelCalibration",
     "MetricGateDecision",
     "OnlineMetricContract",
     "OnlineObservation",
+    "OpenAICompatibleJudge",
+    "OpenAIJudgeGrader",
     "Outcome",
     "PersistentFailure",
     "ReleaseGateDecision",

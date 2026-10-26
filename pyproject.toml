@@ -18,6 +18,9 @@ dev = [
   "ruff>=0.9,<1",
   "mypy>=1.14,<2"
 ]
+openai = [
+  "openai>=1.60,<4"
+]
 
 [project.scripts]
 ai-eval-demo = "ai_eval_engineering.cli:main"
