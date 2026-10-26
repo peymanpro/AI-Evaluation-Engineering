@@ -490,12 +490,12 @@ class AsyncEvaluationRunner:
                     break
                 budget_grade = cast(AsyncBudgetedGrader, grader).grade_with_budget
                 try:
-                    grader_result = budget_grade(
+                    budgeted_grader_result = budget_grade(
                         case, output, max_cost_usd=remaining_case_budget
                     )
-                    if inspect.isawaitable(grader_result):
-                        grader_result = await cast(
-                            Awaitable[GraderResult], grader_result
+                    if inspect.isawaitable(budgeted_grader_result):
+                        budgeted_grader_result = await cast(
+                            Awaitable[GraderResult], budgeted_grader_result
                         )
                 except RequestBudgetExceeded as exc:
                     controller.stop(
@@ -503,15 +503,15 @@ class AsyncEvaluationRunner:
                         f"grader declined case {case.id!r} before sending a request: {exc}",
                     )
                     break
-                if not isinstance(grader_result, GraderResult):
+                if not isinstance(budgeted_grader_result, GraderResult):
                     raise TypeError(
                         "Budget-aware graders must return GraderResult instances."
                     )
 
                 grader_cost = controller.record_component_cost(
-                    grader_result.metadata.get("cost_usd"),
+                    budgeted_grader_result.metadata.get("cost_usd"),
                     case_id=case.id,
-                    source=f"grader {grader_result.grader!r}",
+                    source=f"grader {budgeted_grader_result.grader!r}",
                     allocation_usd=allocation,
                     case_spent_usd=case_spent,
                 )
@@ -519,7 +519,7 @@ class AsyncEvaluationRunner:
                     retain_reservation = True
                     break
                 case_spent = math.fsum((case_spent, grader_cost))
-                graded_items.append(grader_result)
+                graded_items.append(budgeted_grader_result)
                 if controller.stop_status is not None:
                     break
 
