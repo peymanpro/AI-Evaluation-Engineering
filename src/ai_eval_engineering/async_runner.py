@@ -9,6 +9,7 @@ from collections.abc import Awaitable
 from pathlib import Path
 from typing import Protocol, cast
 
+from .budget import BudgetedRunResult, RunBudgetPolicy, _LiveBudgetGuard
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
@@ -193,3 +194,102 @@ class AsyncEvaluationRunner:
             manifest=run_manifest,
             cases=tuple(cast(CaseResult, result) for result in results),
         )
+
+    async def run_budgeted(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        policy: RunBudgetPolicy,
+        checkpoint_path: str | Path | None = None,
+    ) -> BudgetedRunResult:
+        """Run bounded batches and stop starting new batches at live budget limits.
+
+        Results already in flight are allowed to finish and are included in the
+        spend totals. The method never turns a partial run into an EvaluationRun.
+        Batch barriers prevent a finished fast worker from starting another case
+        while a sibling request from the same batch still has unknown usage.
+        """
+        validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
+        if not isinstance(policy, RunBudgetPolicy):
+            raise TypeError("policy must be a RunBudgetPolicy.")
+
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
+        guard = _LiveBudgetGuard(policy)
+        results: list[CaseResult | None] = [None] * len(suite.cases)
+        todo: list[tuple[int, EvaluationCase]] = []
+        for index, case in enumerate(suite.cases):
+            saved_result = completed.get(case.id)
+            if saved_result is None:
+                todo.append((index, case))
+                continue
+            results[index] = saved_result
+            guard.observe_result(saved_result)
+
+        checkpoint_lock = asyncio.Lock()
+
+        async def execute_case(index: int, case: EvaluationCase) -> None:
+            output = await self._run_adapter(case)
+            validate_system_output(case, output)
+            guard.observe_output(case.id, output)
+
+            graded_items: list[GraderResult] = []
+            for grader in self._graders:
+                grader_result = grader.grade(case, output)
+                if inspect.isawaitable(grader_result):
+                    grader_result = await cast(Awaitable[GraderResult], grader_result)
+                if not isinstance(grader_result, GraderResult):
+                    raise TypeError("Graders must return GraderResult instances.")
+                graded_items.append(grader_result)
+            graded = tuple(graded_items)
+            validate_grader_results(graded, case.id)
+            case_result = CaseResult(case=case, output=output, graders=graded)
+            guard.observe_graders(case_result)
+            results[index] = case_result
+            completed[case.id] = case_result
+            if checkpoint_path is not None:
+                async with checkpoint_lock:
+                    save_run_checkpoint(
+                        checkpoint_path, suite, run_manifest, completed
+                    )
+
+        for batch_start in range(0, len(todo), self._max_concurrency):
+            if not guard.can_start_case():
+                break
+            batch = todo[batch_start : batch_start + self._max_concurrency]
+            tasks = [
+                asyncio.create_task(execute_case(index, case))
+                for index, case in batch
+            ]
+            try:
+                await asyncio.gather(*tasks)
+            except BaseException:
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise
+
+        ordered_completed = tuple(
+            cast(CaseResult, result) for result in results if result is not None
+        )
+        pending_case_ids = tuple(
+            case.id
+            for index, case in enumerate(suite.cases)
+            if results[index] is None
+        )
+        status = guard.finish(pending_case_ids)
+        return BudgetedRunResult(
+            manifest=run_manifest,
+            completed_cases=ordered_completed,
+            pending_case_ids=pending_case_ids,
+            status=status,
+            known_cost_usd=guard.known_cost_usd,
+            known_tokens=guard.known_tokens,
+            stop_reason=guard.stop_reason,
+        )
+
