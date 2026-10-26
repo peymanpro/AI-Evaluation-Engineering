@@ -1,5 +1,6 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
+from .async_runner import AsyncEvaluationRunner, AsyncSystemAdapter
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .domain import (
     AggregatedResult,
@@ -90,6 +91,8 @@ __all__ = [
     "EXTERNAL_RUN_SCHEMA_VERSION",
     "SUPPORTED_PROMPTFOO_RESULT_VERSION",
     "ABResultAdapter",
+    "AsyncEvaluationRunner",
+    "AsyncSystemAdapter",
     "AdversarialCase",
     "AdversarialCategory",
     "AgentEvaluationResult",
