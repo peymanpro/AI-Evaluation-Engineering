@@ -16,6 +16,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Offline subgroup/slice analysis by tag, risk category, or an explicitly selected scalar case-metadata field, with per-grader summaries and a recorded-run CLI command.
 - Dependency-free substring, regular-expression, and numeric-tolerance graders with explicit type handling, configurable targets, and deterministic pass/fail behavior.
 - Opt-in transient adapter retries for sync and async runners, with bounded exponential backoff, explicit retryable exception types, retry event callbacks, and manifest-recorded policy configuration.
+- JSON Pointer field assertions and a synchronous composite grader with explicit weights, weighted scores, and all/any/score-threshold pass policies.
 - Public package exports and tests for the new grader primitives.
 
 ### Maintained
