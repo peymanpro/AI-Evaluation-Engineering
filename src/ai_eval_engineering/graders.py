@@ -40,16 +40,25 @@ class ExactMatchGrader:
 class ContainsGrader:
     """Check whether a string output contains the case's expected substring."""
 
-    def __init__(self, name: str = "contains", case_sensitive: bool = False) -> None:
+    def __init__(
+        self,
+        name: str = "contains",
+        *,
+        substring: str | None = None,
+        case_sensitive: bool = False,
+    ) -> None:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("name must not be empty.")
+        if substring is not None and (not isinstance(substring, str) or not substring):
+            raise ValueError("substring must be a non-empty string or None.")
         if not isinstance(case_sensitive, bool):
             raise TypeError("case_sensitive must be a boolean.")
         self.name = name
+        self.substring = substring
         self.case_sensitive = case_sensitive
 
     def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
-        expected = case.expected
+        expected = self.substring if self.substring is not None else case.expected
         actual = output.output
         if not isinstance(expected, str) or not isinstance(actual, str):
             return GraderResult(
@@ -82,21 +91,32 @@ class RegexGrader:
         self,
         name: str = "regex",
         *,
+        pattern: str | None = None,
         full_match: bool = False,
         case_sensitive: bool = True,
     ) -> None:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("name must not be empty.")
+        if pattern is not None and (not isinstance(pattern, str) or not pattern):
+            raise ValueError("pattern must be a non-empty string or None.")
         if not isinstance(full_match, bool):
             raise TypeError("full_match must be a boolean.")
         if not isinstance(case_sensitive, bool):
             raise TypeError("case_sensitive must be a boolean.")
         self.name = name
+        self.pattern = pattern
         self.full_match = full_match
         self.case_sensitive = case_sensitive
+        self._compiled_pattern = self._compile(pattern) if pattern is not None else None
+
+    def _compile(self, pattern: str) -> re.Pattern[str]:
+        try:
+            return re.compile(pattern, 0 if self.case_sensitive else re.IGNORECASE)
+        except re.error as exc:
+            raise ValueError("pattern is not a valid regular-expression pattern.") from exc
 
     def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
-        pattern = case.expected
+        pattern = self.pattern if self.pattern is not None else case.expected
         actual = output.output
         if not isinstance(pattern, str) or not isinstance(actual, str):
             return GraderResult(
@@ -106,8 +126,8 @@ class RegexGrader:
                 details="regex grader requires string pattern and actual values",
             )
         try:
-            compiled = re.compile(pattern, 0 if self.case_sensitive else re.IGNORECASE)
-        except re.error:
+            compiled = self._compiled_pattern or self._compile(pattern)
+        except ValueError:
             return GraderResult(
                 grader=self.name,
                 passed=False,
