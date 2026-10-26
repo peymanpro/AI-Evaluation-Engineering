@@ -39,6 +39,8 @@ jobs:
           ai-eval release-policy-schema > /tmp/release-policy-v1.schema.json
           python -c 'import json; schema=json.load(open("/tmp/release-policy-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1; assert schema["$defs"]["policy"]["properties"]["metrics"]["minItems"] == 1'
           python -c 'from ai_eval_engineering import load_release_policy_json; policy=load_release_policy_json("examples/policies/quality-latency-safety-v1.json"); assert len(policy.metrics) == 3; print("Three-metric release policy validated.")'
+      - name: Execution report schema
+        run: python -c 'from ai_eval_engineering import get_execution_report_schema; schema=get_execution_report_schema(); assert schema["properties"]["schema_version"]["const"] == 1; assert schema["$defs"]["caseResult"]["additionalProperties"] is False'
       - name: Core demo
         run: ai-eval-demo
       - name: Reserved budget demo
@@ -61,3 +63,5 @@ jobs:
         run: python examples/retry_policy.py
       - name: Structured and composite graders demo
         run: python examples/structured_composite_graders.py
+      - name: Failure-aware evaluation report demo
+        run: python examples/failure_aware_evaluation.py
