@@ -12,7 +12,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
-- an optional OpenAI-compatible structured-output LLM judge, rubric representation, and human calibration;
+- optional synchronous and native-async OpenAI-compatible structured-output LLM judges, rubric representation, and human calibration;
 - bootstrap confidence intervals, paired comparison, effect-size reporting, and run-to-run variance analysis;
 - explicit baselines and deterministic regression gates;
 - quality/cost and quality/latency trade-off frontiers;
