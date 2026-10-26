@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -169,6 +170,31 @@ def test_sync_runner_stops_after_a_per_case_cost_violation() -> None:
     assert result.status == "BUDGET_LIMIT_REACHED"
     assert result.pending_case_ids == ("case-2", "case-3")
 
+
+
+def test_checkpointed_cases_are_counted_before_resuming_budgeted_run(tmp_path: Path) -> None:
+    suite = make_suite()
+    manifest = manifest_for(suite)
+    adapter = CostAdapter({case.id: 0.20 for case in suite.cases})
+    runner = EvaluationRunner(adapter, [ExactMatchGrader()])
+    checkpoint = tmp_path / "budget-checkpoint.json"
+
+    runner.run(suite, manifest, checkpoint_path=checkpoint)
+    assert adapter.calls == [case.id for case in suite.cases]
+    adapter.calls.clear()
+
+    result = runner.run_budgeted(
+        suite,
+        manifest,
+        policy=RunBudgetPolicy(max_total_cost_usd=0.50),
+        checkpoint_path=checkpoint,
+    )
+
+    assert adapter.calls == []
+    assert result.all_cases_completed is True
+    assert result.pending_case_ids == ()
+    assert result.status == "BUDGET_LIMIT_REACHED"
+    assert result.known_cost_usd == pytest.approx(0.80)
 
 def test_async_runner_completes_current_batch_but_does_not_start_another() -> None:
     suite = make_suite()
