@@ -90,7 +90,12 @@ async def main() -> None:
         "support-v1",
         (EvaluationCase("case-1", {"question": "Where is my order?"}, expected="shipped"),),
     )
-    runner = AsyncEvaluationRunner(MyAsyncSystem(), [ExactMatchGrader()], max_concurrency=8)
+    runner = AsyncEvaluationRunner(
+        MyAsyncSystem(),
+        [ExactMatchGrader()],
+        max_concurrency=8,
+        timeout_per_case_seconds=30.0,
+    )
     run = await runner.run(
         suite,
         build_run_metadata(suite, "support-assistant", "git:abc123"),
