@@ -11,6 +11,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Native-async OpenAI-compatible judge and grader that can run inside bounded concurrent evaluations without blocking on a synchronous model SDK call.
 - Post-run budget assessment for total/per-case measured cost, token usage, and per-case latency, with explicit exceeded, incomplete-evidence, and invalid-evidence outcomes.
 - Opt-in live budgeted execution for synchronous and asynchronous runners, with fail-closed missing-usage handling and explicit partial-run results when further cases are not started.
+- Reservation-based budget execution that reserves a per-case cost envelope before dispatch, accounts for all in-flight reservations and paid graders, rejects unbounded components before execution, and flags components that report charges above their declared allowance.
 - Atomic checkpoints for synchronous and asynchronous runs, with strict suite/run-identity validation and resume of unfinished cases.
 - A provider-free `ai-eval` CLI for external-run schema/validation, decision-grade baseline/candidate comparisons, and post-run budget gates with shell-friendly exit codes.
 - Versioned evaluation-suite JSON interchange with atomic file I/O, strict validation, packaged schema, and `ai-eval validate-suite` / `ai-eval suite-schema` commands.
