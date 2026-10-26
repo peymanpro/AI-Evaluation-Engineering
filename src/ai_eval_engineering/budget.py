@@ -700,8 +700,8 @@ class _ReservedBudgetController:
         self.policy = policy
         self._total_cap = Decimal(str(policy.max_total_cost_usd))
         self._case_cap = Decimal(str(policy.max_case_cost_usd))
-        self._known_cost_usd = Decimal("0")
-        self._reserved_cost_usd = Decimal("0")
+        self._known_cost_usd = Decimal(0)
+        self._reserved_cost_usd = Decimal(0)
         self._stop_status: ReservedBudgetStatus | None = None
         self._stop_reason: str | None = None
 
@@ -727,12 +727,12 @@ class _ReservedBudgetController:
 
     def _remaining_decimal(self) -> Decimal:
         return max(
-            Decimal("0"),
+            Decimal(0),
             self._total_cap - self._known_cost_usd - self._reserved_cost_usd,
         )
 
     @staticmethod
-    def _decimal_amount(value: float | int) -> Decimal:
+    def _decimal_amount(value: float) -> Decimal:
         """Convert API numbers by their decimal spelling, avoiding binary-float drift."""
         return Decimal(str(value))
 
@@ -782,10 +782,10 @@ class _ReservedBudgetController:
         cost_decimal = self._decimal_amount(cost_value)
         allocation = self._decimal_amount(allocation_usd)
         case_spent = self._decimal_amount(round(case_spent_usd, 12))
-        unspent_case_reservation = max(Decimal("0"), allocation - case_spent)
+        unspent_case_reservation = max(Decimal(0), allocation - case_spent)
         consumed_reservation = min(unspent_case_reservation, cost_decimal)
         self._reserved_cost_usd = max(
-            Decimal("0"), self._reserved_cost_usd - consumed_reservation
+            Decimal(0), self._reserved_cost_usd - consumed_reservation
         )
         self._known_cost_usd += cost_decimal
         if cost_decimal > unspent_case_reservation:
@@ -810,9 +810,9 @@ class _ReservedBudgetController:
         """Release unused reservation when all costs for a case are reconciled."""
         allocation = self._decimal_amount(allocation_usd)
         case_spent = self._decimal_amount(round(case_spent_usd, 12))
-        remainder = max(Decimal("0"), allocation - case_spent)
+        remainder = max(Decimal(0), allocation - case_spent)
         self._reserved_cost_usd = max(
-            Decimal("0"), self._reserved_cost_usd - remainder
+            Decimal(0), self._reserved_cost_usd - remainder
         )
 
     def add_existing_cost(self, cost: float, *, case_id: str, source: str) -> None:
