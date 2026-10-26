@@ -2,9 +2,10 @@
 
 **AI Evaluation Engineering is a provider-neutral Python library for evaluating, comparing, and regression-testing AI systems.** It provides reusable evaluation contracts, synchronous and asynchronous runners, graders, statistical release gates, budget controls, and auditable run artifacts—so AI evaluation can be part of a repeatable engineering workflow rather than a collection of one-off scripts.
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![Python 3.11–3.13 tested](https://img.shields.io/badge/python-3.11--3.13-3776AB.svg)](https://www.python.org/)
 [![CI](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml)
 [![Latest GitHub Release](https://img.shields.io/github/v/release/peymanpro/AI-Evaluation-Engineering)](https://github.com/peymanpro/AI-Evaluation-Engineering/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 The library keeps case-level observations and run metadata available for inspection. It helps teams answer not only *“What score did this model get?”*, but also *“Which cases failed, how certain is the comparison, what did the run cost, and is the evidence complete enough to support a release decision?”*
 
@@ -66,7 +67,7 @@ The library separates **execution**, **grading**, **statistical interpretation**
 
 ## Installation
 
-**PyPI publication is intentionally deferred while the project remains in feature development.** Install from a source checkout rather than assuming the package is available from the public package index.
+**The `0.3.0` release is being prepared; PyPI publication has not yet been triggered.** Until the package is confirmed available from the public index, install from a source checkout.
 
 ~~~bash
 git clone https://github.com/peymanpro/AI-Evaluation-Engineering.git
@@ -582,6 +583,8 @@ Generated `artifacts/` files are ignored by Git. Do not commit run outputs that 
 
 ## Release status
 
-The project has a GitHub release, but **PyPI publication is intentionally deferred during feature development**. A GitHub Release or successful CI run does not mean a package was uploaded to PyPI. The repository's release workflow validates the source and built distributions; publishing to PyPI requires an explicit authorized workflow dispatch with `publish_pypi=true` and a correctly configured PyPI Trusted Publisher.
+The repository is preparing version `0.3.0` for the current `main` source. **This preparation does not publish the package to PyPI.** The existing `v0.2.0` GitHub release points to an earlier source revision and should not be treated as the distribution of the current `main` capabilities.
 
-Until PyPI publication is explicitly announced, use the source-install instructions above.
+On a push to `main`, the release workflow validates the source, builds and checks the distributions, verifies wheel installation, and creates a matching GitHub Release. It does **not** publish to PyPI automatically. PyPI publication requires a separate authorized run from GitHub Actions using `workflow_dispatch` with `publish_pypi=true`, plus a configured Trusted Publisher for owner `peymanpro`, repository `AI-Evaluation-Engineering`, workflow `.github/workflows/release.yml`, and environment `pypi`.
+
+The release workflow accepts only a version matching `pyproject.toml`. For a manual PyPI publishing attempt, use version `0.3.0` and its matching `v0.3.0` tag; do not reuse the older `v0.2.0` tag. Until the PyPI upload is confirmed, follow the source-install instructions above.
