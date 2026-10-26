@@ -212,7 +212,7 @@ def validate_execution_report(report: EvaluationExecutionReport) -> None:
 
         expected_stage = _STATUS_TO_STAGE[item.status]
         if not isinstance(item.failure, CaseExecutionFailure):
-            raise ValueError(f"{location}.failure is required for a failed case.")
+            raise TypeError(f"{location}.failure is required for a failed case.")
         if item.failure.stage != expected_stage:
             raise ValueError(
                 f"{location}.failure.stage must be {expected_stage!r} for status {item.status!r}."
