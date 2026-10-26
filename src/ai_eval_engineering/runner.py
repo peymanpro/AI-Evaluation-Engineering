@@ -314,7 +314,7 @@ class EvaluationRunner:
                 )
                 if grader_cost is None:
                     break
-                case_spent = math.fsum((case_spent, grader_cost))
+                case_spent = round(math.fsum((case_spent, grader_cost)), 12)
             if case_spent > float(policy.max_case_cost_usd):
                 controller.stop(
                     "REQUEST_CAP_VIOLATED",
