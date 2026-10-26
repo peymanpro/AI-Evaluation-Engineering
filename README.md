@@ -7,7 +7,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 ## What the library provides
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
-- reusable evaluation runners with provider-neutral system adapters;
+- reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
@@ -53,9 +53,58 @@ The framework preserves raw case-level observations so aggregate claims can be i
     python examples/tradeoffs.py
     python examples/integrations.py
     python examples/promptfoo_release_workflow.py
+    python examples/async_evaluation.py
 
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
+
+## Asynchronous evaluation
+
+Use `AsyncEvaluationRunner` when the system under test is accessed through async HTTP clients,
+model APIs, or another asynchronous runtime. Set `max_concurrency` to cap in-flight system calls.
+The runner preserves the original suite order in the returned `EvaluationRun`, even when requests
+finish in a different order, and reuses the existing synchronous grader contract.
+
+```python
+import asyncio
+
+from ai_eval_engineering import (
+    AsyncEvaluationRunner,
+    EvaluationCase,
+    EvaluationSuite,
+    SystemOutput,
+    build_run_metadata,
+)
+from ai_eval_engineering.graders import ExactMatchGrader
+
+
+class MyAsyncSystem:
+    async def run(self, case: EvaluationCase) -> SystemOutput:
+        response = await your_async_model_client(case.input)
+        return SystemOutput(case_id=case.id, output=response)
+
+
+async def main() -> None:
+    suite = EvaluationSuite(
+        "support-v1",
+        (EvaluationCase("case-1", {"question": "Where is my order?"}, expected="shipped"),),
+    )
+    runner = AsyncEvaluationRunner(MyAsyncSystem(), [ExactMatchGrader()], max_concurrency=8)
+    run = await runner.run(
+        suite,
+        build_run_metadata(suite, "support-assistant", "git:abc123"),
+    )
+    print([(item.case.id, item.graders[0].passed) for item in run.cases])
+
+
+asyncio.run(main())
+```
+
+The adapter's `run` method must be async and return a `SystemOutput`. Existing graders remain
+synchronous and execute on the event loop; use fast, non-blocking graders here. If an adapter or
+grader raises, pending worker tasks are cancelled and the runner raises instead of returning a
+partial run. The async runner does not silently retry requests because retry safety and rate limits
+are provider-specific. See the [async demo](examples/async_evaluation.py).
 
 ## Promptfoo adapter
 
