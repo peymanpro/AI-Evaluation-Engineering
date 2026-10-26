@@ -353,7 +353,7 @@ def import_execution_report_payload(payload: Any) -> EvaluationExecutionReport:
             if not isinstance(stage, str) or stage not in _ALLOWED_FAILURE_STAGES:
                 raise ExecutionReportError(f"{location}.failure.stage is unsupported.")
             failure = CaseExecutionFailure(
-                stage=stage,  # type: ignore[arg-type]
+                stage=stage,
                 exception_type=_require_non_empty_string(
                     exception_type, f"{location}.failure.exception_type"
                 ),
