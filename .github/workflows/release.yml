@@ -172,12 +172,15 @@ jobs:
   publish-pypi:
     name: Publish distributions to PyPI
     needs: release
-    # PyPI stays opt-in during feature development; a push/tag never publishes it.
+    # Publish automatically for a new version pushed to main. Keep a manual opt-in
+    # path for the initial v0.3.0 upload and explicit retries of an existing version.
     if: >-
       needs.release.result == 'success' &&
       needs.release.outputs.skip != 'true' &&
-      github.event_name == 'workflow_dispatch' &&
-      inputs.publish_pypi == true
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true)
+      )
     runs-on: ubuntu-latest
     environment:
       name: pypi
