@@ -183,6 +183,17 @@ must be unique within their required scope; each output's case ID must match its
 be finite numbers, and latency/cost must be finite and non-negative. Nested metadata and outputs
 must contain JSON values only.
 
+The versioned JSON Schema ships inside the installed wheel and can be loaded by consumers that
+need to validate their own export files before handing them to the importer:
+
+```python
+from ai_eval_engineering import get_external_run_schema
+
+schema = get_external_run_schema()
+print(schema["$schema"])
+print(schema["properties"]["schema_version"]["const"])
+```
+
 This is a provider-neutral interchange format, not a built-in SDK for a particular vendor. The
 external tool or a small tool-specific adapter remains responsible for mapping its fields into the
 documented envelope. Unknown schema versions fail explicitly instead of being guessed.
