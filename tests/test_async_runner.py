@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from ai_eval_engineering.async_runner import AsyncEvaluationRunner, AsyncSystemAdapter
+from ai_eval_engineering.async_runner import AsyncEvaluationRunner
 from ai_eval_engineering.domain import (
     EvaluationCase,
     EvaluationSuite,
