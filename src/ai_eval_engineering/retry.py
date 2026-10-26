@@ -141,3 +141,23 @@ def _finite_non_negative(value: float, name: str) -> float:
     if converted < 0:
         raise ValueError(f"{name} must be non-negative.")
     return converted
+
+
+
+def validate_retry_policy_manifest(
+    configuration: dict[str, object],
+    policy: RetryPolicy | None,
+) -> None:
+    """Ensure retry behavior is represented by the run's recorded configuration."""
+    recorded = configuration.get("retry_policy")
+    expected = policy.to_dict() if policy is not None else None
+    if recorded != expected:
+        if policy is None:
+            raise ValueError(
+                "manifest declares retry_policy but the runner has no retry policy; "
+                "remove that configuration or pass the matching RetryPolicy."
+            )
+        raise ValueError(
+            "manifest retry_policy does not match the runner; build metadata with "
+            "build_run_metadata(..., retry_policy=policy)."
+        )
