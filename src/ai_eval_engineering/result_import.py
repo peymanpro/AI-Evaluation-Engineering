@@ -21,6 +21,31 @@ from .domain import (
 
 EXTERNAL_RUN_SCHEMA_VERSION = 1
 
+# Close the versioned contract objects so unknown fields cannot be silently
+# dropped during import/export. User-defined JSON payload objects remain open.
+_ALLOWED_ROOT_FIELDS = {"schema_version", "manifest", "cases"}
+_ALLOWED_MANIFEST_FIELDS = {
+    "run_id",
+    "suite_version",
+    "system_name",
+    "system_version",
+    "timestamp_utc",
+    "configuration",
+    "environment",
+    "seed",
+}
+_ALLOWED_CASE_RESULT_FIELDS = {"case", "output", "graders"}
+_ALLOWED_CASE_FIELDS = {
+    "id",
+    "input",
+    "expected",
+    "metadata",
+    "tags",
+    "risk_category",
+}
+_ALLOWED_OUTPUT_FIELDS = {"case_id", "output", "latency_ms", "cost_usd", "trace"}
+_ALLOWED_GRADER_FIELDS = {"grader", "passed", "score", "details", "metadata"}
+
 
 def get_external_run_schema() -> dict[str, Any]:
     """Load the versioned external-run JSON Schema from the installed package."""
@@ -52,8 +77,10 @@ def import_run_payload(payload: Any) -> EvaluationRun:
             "Unsupported or missing schema_version; expected "
             f"{EXTERNAL_RUN_SCHEMA_VERSION}."
         )
+    _reject_unknown_fields(root, _ALLOWED_ROOT_FIELDS, "payload")
 
     manifest_data = _require_object(root.get("manifest"), "manifest")
+    _reject_unknown_fields(manifest_data, _ALLOWED_MANIFEST_FIELDS, "manifest")
     manifest = _parse_manifest(manifest_data)
 
     case_rows = _require_list(root.get("cases"), "cases")
@@ -65,7 +92,9 @@ def import_run_payload(payload: Any) -> EvaluationRun:
     for index, row in enumerate(case_rows):
         location = f"cases[{index}]"
         result_data = _require_object(row, location)
+        _reject_unknown_fields(result_data, _ALLOWED_CASE_RESULT_FIELDS, location)
         case_data = _require_object(result_data.get("case"), f"{location}.case")
+        _reject_unknown_fields(case_data, _ALLOWED_CASE_FIELDS, f"{location}.case")
         case = _parse_case(case_data, f"{location}.case")
         if case.id in seen_case_ids:
             raise ValueError(f"Duplicate case id {case.id!r} in cases.")
@@ -73,6 +102,9 @@ def import_run_payload(payload: Any) -> EvaluationRun:
 
         output_data = _require_object(
             result_data.get("output"), f"{location}.output"
+        )
+        _reject_unknown_fields(
+            output_data, _ALLOWED_OUTPUT_FIELDS, f"{location}.output"
         )
         output = _parse_output(output_data, case.id, f"{location}.output")
 
@@ -86,6 +118,9 @@ def import_run_payload(payload: Any) -> EvaluationRun:
         for grader_index, grader_row in enumerate(grader_rows):
             grader_location = f"{location}.graders[{grader_index}]"
             grader_data = _require_object(grader_row, grader_location)
+            _reject_unknown_fields(
+                grader_data, _ALLOWED_GRADER_FIELDS, grader_location
+            )
             grader = _parse_grader(grader_data, grader_location)
             if grader.grader in seen_graders:
                 raise ValueError(
@@ -313,6 +348,17 @@ def _require_object(value: Any, location: str) -> dict[str, Any]:
     if any(not isinstance(key, str) for key in value):
         raise TypeError(f"{location} keys must be strings.")
     return value
+
+
+def _reject_unknown_fields(
+    data: dict[str, Any],
+    allowed: set[str],
+    location: str,
+) -> None:
+    """Reject undeclared fields at versioned contract boundaries."""
+    unknown = sorted(set(data) - allowed)
+    if unknown:
+        raise ValueError(f"{location} contains unsupported fields: {', '.join(unknown)}.")
 
 
 def _require_json_object(value: Any, location: str) -> JsonObject:
