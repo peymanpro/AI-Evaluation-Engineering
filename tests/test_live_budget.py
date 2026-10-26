@@ -155,6 +155,80 @@ def test_sync_runner_stops_when_grader_token_usage_reaches_cap() -> None:
     assert result.status == "BUDGET_LIMIT_REACHED"
 
 
+
+def test_sync_runner_stops_when_case_latency_limit_is_exceeded() -> None:
+    suite = make_suite()
+    adapter = CostAdapter(
+        {
+            "case-0": 0.01,
+            "case-1": 0.01,
+            "case-2": 0.01,
+            "case-3": 0.01,
+        }
+    )
+    suite = EvaluationSuite(
+        suite.version,
+        tuple(
+            EvaluationCase(
+                case.id,
+                {**case.input, "latency_ms": 50.0 if case.id == "case-0" else 10.0},
+                expected=case.expected,
+            )
+            for case in suite.cases
+        ),
+    )
+    result = EvaluationRunner(adapter, [ExactMatchGrader()]).run_budgeted(
+        suite,
+        manifest_for(suite),
+        policy=RunBudgetPolicy(max_case_latency_ms=20.0),
+    )
+
+    assert adapter.calls == ["case-0"]
+    assert result.status == "BUDGET_LIMIT_REACHED"
+    assert result.pending_case_ids == ("case-1", "case-2", "case-3")
+    assert "latency" in (result.stop_reason or "")
+
+
+def test_invalid_token_usage_stops_budgeted_run_with_invalid_evidence() -> None:
+    class InvalidUsageGrader:
+        def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+            return GraderResult(
+                grader="invalid-usage",
+                passed=True,
+                score=1.0,
+                details="synthetic malformed usage",
+                metadata={"usage": {"total_tokens": True}},
+            )
+
+    suite = make_suite()
+    adapter = CostAdapter({case.id: None for case in suite.cases})
+    result = EvaluationRunner(adapter, [InvalidUsageGrader()]).run_budgeted(
+        suite,
+        manifest_for(suite),
+        policy=RunBudgetPolicy(max_total_tokens=10),
+    )
+
+    assert adapter.calls == ["case-0"]
+    assert result.status == "INVALID_BUDGET_EVIDENCE"
+    assert result.pending_case_ids == ("case-1", "case-2", "case-3")
+    assert "total_tokens" in (result.stop_reason or "")
+
+
+def test_empty_suite_cannot_claim_live_budget_compliance() -> None:
+    suite = EvaluationSuite("empty-v1", ())
+    adapter = CostAdapter({})
+    result = EvaluationRunner(adapter, [ExactMatchGrader()]).run_budgeted(
+        suite,
+        manifest_for(suite),
+        policy=RunBudgetPolicy(max_total_cost_usd=1.0),
+    )
+
+    assert result.completed_cases == ()
+    assert result.pending_case_ids == ()
+    assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
+    assert result.within_budget is False
+    assert "no completed cases" in (result.stop_reason or "")
+
 def test_sync_runner_stops_after_a_per_case_cost_violation() -> None:
     suite = make_suite()
     adapter = CostAdapter(
@@ -222,6 +296,39 @@ def test_async_runner_completes_current_batch_but_does_not_start_another() -> No
     assert result.known_cost_usd == pytest.approx(0.80)
     assert result.status == "BUDGET_LIMIT_REACHED"
 
+
+
+def test_async_runner_stops_after_batch_when_token_cap_is_reached() -> None:
+    suite = make_suite(tokens=3)
+    adapter = AsyncCostAdapter({case.id: None for case in suite.cases})
+    result = asyncio.run(
+        AsyncEvaluationRunner(adapter, [UsageGrader()], max_concurrency=2).run_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=RunBudgetPolicy(max_total_tokens=5),
+        )
+    )
+
+    assert set(adapter.calls) == {"case-0", "case-1"}
+    assert result.known_tokens == 6
+    assert result.pending_case_ids == ("case-2", "case-3")
+    assert result.status == "BUDGET_LIMIT_REACHED"
+
+
+def test_async_empty_suite_cannot_claim_live_budget_compliance() -> None:
+    suite = EvaluationSuite("empty-v1", ())
+    adapter = AsyncCostAdapter({})
+    result = asyncio.run(
+        AsyncEvaluationRunner(adapter, [ExactMatchGrader()]).run_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=RunBudgetPolicy(max_total_cost_usd=1.0),
+        )
+    )
+
+    assert adapter.calls == []
+    assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
+    assert result.within_budget is False
 
 def test_async_runner_fails_closed_when_cost_is_unavailable() -> None:
     suite = make_suite()
