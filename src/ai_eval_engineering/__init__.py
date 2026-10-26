@@ -2,7 +2,14 @@
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .async_runner import AsyncEvaluationRunner, AsyncGrader, AsyncSystemAdapter
-from .budget import BudgetAssessment, BudgetViolation, RunBudgetPolicy, assess_run_budget
+from .budget import (
+    BudgetAssessment,
+    BudgetViolation,
+    BudgetedRunResult,
+    LiveBudgetStatus,
+    RunBudgetPolicy,
+    assess_run_budget,
+)
 from .checkpoint import CheckpointError
 from .contracts import validate_run_inputs, validate_suite
 from .domain import (
@@ -120,6 +127,7 @@ __all__ = [
     "AsyncSystemAdapter",
     "BudgetAssessment",
     "BudgetViolation",
+    "BudgetedRunResult",
     "CalibrationReport",
     "CaseResult",
     "CheckpointError",
@@ -143,6 +151,7 @@ __all__ = [
     "Judge",
     "JudgeProviderError",
     "JudgeResult",
+    "LiveBudgetStatus",
     "LabelCalibration",
     "MetricGateDecision",
     "NumericToleranceGrader",
