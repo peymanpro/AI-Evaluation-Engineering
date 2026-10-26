@@ -20,8 +20,8 @@ from .domain import (
     RunMetadata,
     SystemOutput,
 )
+from .retry import RetryPolicy, validate_retry_policy_manifest
 from .runner import Grader
-from .retry import RetryPolicy
 
 
 class AsyncSystemAdapter(Protocol):
@@ -127,6 +127,7 @@ class AsyncEvaluationRunner:
         saved result is reused.
         """
         validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
         run_manifest = manifest
         completed: dict[str, CaseResult] = {}
         if checkpoint_path is not None:
