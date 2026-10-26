@@ -4,7 +4,9 @@ The V1.1 evaluation path is:
 
 System Under Test → Evaluation Adapter → Case Execution → Graders → Statistical Analysis → Regression Gate → Evidence Package.
 
-The framework separates case definition from execution, grading, statistical interpretation, reporting, and release gating. Both runners validate the suite and manifest before calling the system, then validate each output and grader result before recording it. Both synchronous and asynchronous runners use the same typed cases, outputs, graders, and run manifests. The async runner bounds in-flight system calls, optionally applies per-case deadlines, and preserves suite order in the final results. Both runners can atomically checkpoint completed results and resume unfinished cases after validating the complete suite fingerprint and run identity.
+The framework separates case definition from execution, grading, statistical interpretation, reporting, and release gating. Both runners validate the suite and manifest before calling the system, then validate each output and grader result before recording it. Both synchronous and asynchronous runners use the same typed cases, outputs, graders, and run manifests. The async runner bounds in-flight system calls, optionally applies per-attempt deadlines, and preserves suite order in the final results. Both runners can atomically checkpoint completed results and resume unfinished cases after validating the complete suite fingerprint and run identity.
+
+An opt-in `RetryPolicy` wraps only the system-adapter call. It uses a finite attempt budget, explicitly configured retryable exception classes, capped exponential backoff, and an optional `RetryEvent` callback. Graders and output-contract validation are never retried. The retry settings are recorded in the run manifest and checked against the runner configuration, so retries cannot be changed silently between the manifest and execution.
 
 ## Agent path
 

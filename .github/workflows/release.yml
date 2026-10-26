@@ -113,6 +113,8 @@ jobs:
           python examples/promptfoo_release_workflow.py
           python examples/async_evaluation.py
           python examples/deterministic_graders.py
+          python examples/retry_policy.py
+          python examples/retry_policy.py
 
       - name: Build and validate distributions
         if: steps.version.outputs.skip != 'true'

@@ -20,6 +20,7 @@ from .domain import (
     RunMetadata,
     SystemOutput,
 )
+from .retry import RetryPolicy, validate_retry_policy_manifest
 from .runner import Grader
 
 
@@ -55,6 +56,7 @@ class AsyncEvaluationRunner:
         *,
         max_concurrency: int = 8,
         timeout_per_case_seconds: float | None = None,
+        retry_policy: RetryPolicy | None = None,
     ) -> None:
         if not graders:
             raise ValueError("At least one grader is required.")
@@ -74,10 +76,42 @@ class AsyncEvaluationRunner:
             if not math.isfinite(timeout_value) or timeout_value <= 0:
                 raise ValueError("timeout_per_case_seconds must be finite and positive.")
             timeout_per_case_seconds = timeout_value
+        if retry_policy is not None and not isinstance(retry_policy, RetryPolicy):
+            raise TypeError("retry_policy must be a RetryPolicy or None.")
         self._adapter = adapter
         self._graders: tuple[Grader | AsyncGrader, ...] = tuple(graders)
         self._max_concurrency = max_concurrency
         self._timeout_per_case_seconds = timeout_per_case_seconds
+        self._retry_policy = retry_policy
+
+    async def _run_adapter(self, case: EvaluationCase) -> SystemOutput:
+        attempts = self._retry_policy.max_attempts if self._retry_policy else 1
+        for attempt in range(1, attempts + 1):
+            try:
+                timeout_seconds = self._timeout_per_case_seconds
+                if timeout_seconds is None:
+                    output = await self._adapter.run(case)
+                else:
+                    timeout_scope = asyncio.timeout(timeout_seconds)
+                    try:
+                        async with timeout_scope:
+                            output = await self._adapter.run(case)
+                    except TimeoutError as exc:
+                        if timeout_scope.expired():
+                            raise TimeoutError(
+                                f"System adapter timed out for case {case.id!r} after "
+                                f"{timeout_seconds:g} seconds."
+                            ) from exc
+                        raise
+                return output
+            except Exception as exc:
+                if self._retry_policy is None:
+                    raise
+                delay = self._retry_policy.schedule_retry(case.id, exc, attempt)
+                if delay is None:
+                    raise
+                await asyncio.sleep(delay)
+        raise RuntimeError("Async adapter retry loop finished without a result.")
 
     async def run(
         self,
@@ -93,6 +127,7 @@ class AsyncEvaluationRunner:
         saved result is reused.
         """
         validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
         run_manifest = manifest
         completed: dict[str, CaseResult] = {}
         if checkpoint_path is not None:
@@ -118,21 +153,7 @@ class AsyncEvaluationRunner:
                 except StopIteration:
                     return
 
-                timeout_seconds = self._timeout_per_case_seconds
-                if timeout_seconds is None:
-                    output = await self._adapter.run(case)
-                else:
-                    timeout_scope = asyncio.timeout(timeout_seconds)
-                    try:
-                        async with timeout_scope:
-                            output = await self._adapter.run(case)
-                    except TimeoutError as exc:
-                        if timeout_scope.expired():
-                            raise TimeoutError(
-                                f"System adapter timed out for case {case.id!r} after "
-                                f"{timeout_seconds:g} seconds."
-                            ) from exc
-                        raise
+                output = await self._run_adapter(case)
                 validate_system_output(case, output)
                 graded_items: list[GraderResult] = []
                 for grader in self._graders:

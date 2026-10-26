@@ -87,6 +87,7 @@ from .result_import import (
     load_run_json,
     write_run_json,
 )
+from .retry import RetryEvent, RetryPolicy
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .slices import GraderSliceMetric, SliceSummary, analyze_run_slices
@@ -154,6 +155,8 @@ __all__ = [
     "RegexGrader",
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
+    "RetryEvent",
+    "RetryPolicy",
     "RubricDimension",
     "RunBudgetPolicy",
     "RunMetadata",
