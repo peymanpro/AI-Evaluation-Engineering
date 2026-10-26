@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any, Protocol
 
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
+from .retry import RetryPolicy
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -60,11 +62,34 @@ def build_run_metadata(
 
 
 class EvaluationRunner:
-    def __init__(self, adapter: SystemAdapter, graders: list[Grader]) -> None:
+    def __init__(
+        self,
+        adapter: SystemAdapter,
+        graders: list[Grader],
+        *,
+        retry_policy: RetryPolicy | None = None,
+    ) -> None:
         if not graders:
             raise ValueError("At least one grader is required.")
+        if retry_policy is not None and not isinstance(retry_policy, RetryPolicy):
+            raise TypeError("retry_policy must be a RetryPolicy or None.")
         self._adapter = adapter
         self._graders = graders
+        self._retry_policy = retry_policy
+
+    def _run_adapter(self, case: EvaluationCase) -> SystemOutput:
+        attempts = self._retry_policy.max_attempts if self._retry_policy else 1
+        for attempt in range(1, attempts + 1):
+            try:
+                return self._adapter.run(case)
+            except Exception as exc:
+                if self._retry_policy is None:
+                    raise
+                delay = self._retry_policy.schedule_retry(case.id, exc, attempt)
+                if delay is None:
+                    raise
+                time.sleep(delay)
+        raise RuntimeError("Adapter retry loop finished without a result.")
 
     def run(
         self,
@@ -88,7 +113,7 @@ class EvaluationRunner:
         for case in suite.cases:
             if case.id in completed:
                 continue
-            output = self._adapter.run(case)
+            output = self._run_adapter(case)
             validate_system_output(case, output)
             grader_results = tuple(grader.grade(case, output) for grader in self._graders)
             validate_grader_results(grader_results, case.id)
