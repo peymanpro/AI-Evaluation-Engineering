@@ -63,7 +63,8 @@ synthetic fixtures and makes no external model calls.
 Use `AsyncEvaluationRunner` when the system under test is accessed through async HTTP clients,
 model APIs, or another asynchronous runtime. Set `max_concurrency` to cap in-flight system calls.
 The runner preserves the original suite order in the returned `EvaluationRun`, even when requests
-finish in a different order, and reuses the existing synchronous grader contract.
+finish in a different order, and reuses the existing synchronous grader contract. An optional
+`timeout_per_case_seconds` setting places a deadline on each async system call.
 
 ```python
 import asyncio
