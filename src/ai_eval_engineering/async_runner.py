@@ -85,10 +85,11 @@ class AsyncEvaluationRunner:
                 except StopIteration:
                     return
 
-                if self._timeout_per_case_seconds is None:
+                timeout_seconds = self._timeout_per_case_seconds
+                if timeout_seconds is None:
                     output = await self._adapter.run(case)
                 else:
-                    timeout_scope = asyncio.timeout(self._timeout_per_case_seconds)
+                    timeout_scope = asyncio.timeout(timeout_seconds)
                     try:
                         async with timeout_scope:
                             output = await self._adapter.run(case)
@@ -96,7 +97,7 @@ class AsyncEvaluationRunner:
                         if timeout_scope.expired():
                             raise TimeoutError(
                                 f"System adapter timed out for case {case.id!r} after "
-                                f"{self._timeout_per_case_seconds:g} seconds."
+                                f"{timeout_seconds:g} seconds."
                             ) from exc
                         raise
                 if not isinstance(output, SystemOutput):
