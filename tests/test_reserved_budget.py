@@ -181,16 +181,23 @@ def test_reserved_mode_rejects_configured_retries_before_requests() -> None:
 
     suite = make_suite()
     adapter = CappedSyncAdapter({case.id: 0.1 for case in suite.cases})
+    retry_policy = RetryPolicy(max_attempts=2)
     runner = EvaluationRunner(
         adapter,
         [ExactMatchGrader()],
-        retry_policy=RetryPolicy(max_attempts=2),
+        retry_policy=retry_policy,
     )
 
     with pytest.raises(ValueError, match="does not allow retries"):
         runner.run_reserved_budgeted(
             suite,
-            manifest_for(suite),
+            build_run_metadata(
+                suite,
+                "reserved-budget-system",
+                "test-v1",
+                seed=5,
+                retry_policy=retry_policy,
+            ),
             policy=ReservedBudgetPolicy(max_total_cost_usd=1.0, max_case_cost_usd=0.5),
         )
 
