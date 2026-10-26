@@ -2,6 +2,7 @@
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .async_runner import AsyncEvaluationRunner, AsyncSystemAdapter
+from .contracts import validate_run_inputs, validate_suite
 from .domain import (
     AggregatedResult,
     CaseResult,
@@ -163,6 +164,8 @@ __all__ = [
     "run_contract_demo",
     "summarize_adversarial_cases",
     "validate_judge_result",
+    "validate_run_inputs",
+    "validate_suite",
     "write_evidence_package",
     "write_failure_memory",
     "write_run_json",
