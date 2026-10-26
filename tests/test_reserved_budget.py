@@ -135,6 +135,67 @@ def manifest_for(suite: EvaluationSuite) -> RunMetadata:
     return build_run_metadata(suite, "reserved-budget-system", "test-v1", seed=5)
 
 
+
+def test_zero_total_budget_starts_no_reserved_request() -> None:
+    suite = make_suite()
+    adapter = CappedSyncAdapter({case.id: 0.1 for case in suite.cases})
+
+    result = EvaluationRunner(adapter, [ExactMatchGrader()]).run_reserved_budgeted(
+        suite,
+        manifest_for(suite),
+        policy=ReservedBudgetPolicy(max_total_cost_usd=0.0, max_case_cost_usd=0.30),
+    )
+
+    assert adapter.attempts == []
+    assert result.completed_cases == ()
+    assert result.pending_case_ids == tuple(case.id for case in suite.cases)
+    assert result.incomplete_case_ids == ()
+    assert result.not_started_case_ids == tuple(case.id for case in suite.cases)
+    assert result.status == "BUDGET_LIMIT_REACHED"
+
+
+def test_empty_suite_does_not_claim_reserved_budget_compliance() -> None:
+    suite = EvaluationSuite("empty-v1", ())
+    adapter = CappedSyncAdapter({})
+    result = EvaluationRunner(adapter, [ExactMatchGrader()]).run_reserved_budgeted(
+        suite,
+        manifest_for(suite),
+        policy=ReservedBudgetPolicy(max_total_cost_usd=1.0, max_case_cost_usd=0.5),
+    )
+
+    assert adapter.attempts == []
+    assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
+    assert result.within_budget is False
+    assert result.pending_case_ids == ()
+    assert result.incomplete_case_ids == ()
+    assert result.not_started_case_ids == ()
+
+
+def test_reserved_policy_rejects_non_positive_case_ceiling() -> None:
+    with pytest.raises(ValueError, match="greater than zero"):
+        ReservedBudgetPolicy(max_total_cost_usd=1.0, max_case_cost_usd=0.0)
+
+
+def test_reserved_mode_rejects_configured_retries_before_requests() -> None:
+    from ai_eval_engineering.retry import RetryPolicy
+
+    suite = make_suite()
+    adapter = CappedSyncAdapter({case.id: 0.1 for case in suite.cases})
+    runner = EvaluationRunner(
+        adapter,
+        [ExactMatchGrader()],
+        retry_policy=RetryPolicy(max_attempts=2),
+    )
+
+    with pytest.raises(ValueError, match="does not allow retries"):
+        runner.run_reserved_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=ReservedBudgetPolicy(max_total_cost_usd=1.0, max_case_cost_usd=0.5),
+        )
+
+    assert adapter.attempts == []
+
 def test_sync_reservation_prevents_request_when_remaining_budget_is_too_small() -> None:
     suite = make_suite()
     adapter = CappedSyncAdapter(
