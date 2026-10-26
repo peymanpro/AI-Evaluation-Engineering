@@ -4,15 +4,11 @@ import asyncio
 import copy
 import json
 from pathlib import Path
-from typing import Any
-
 import pytest
 
 import ai_eval_engineering as public_api
 from ai_eval_engineering import (
     AsyncEvaluationRunner,
-    CaseExecutionResult,
-    EvaluationExecutionReport,
     EvaluationRunner,
     EvaluationSuite,
     ExecutionReportError,
