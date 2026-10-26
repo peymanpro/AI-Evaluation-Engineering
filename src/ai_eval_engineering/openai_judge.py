@@ -56,14 +56,13 @@ class OpenAICompatibleJudge:
             raise TypeError("max_retries must be an integer.")
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative.")
-        if temperature is not None:
-            if (
-                isinstance(temperature, bool)
-                or not isinstance(temperature, (int, float))
-                or not math.isfinite(float(temperature))
-                or not 0.0 <= temperature <= 2.0
-            ):
-                raise ValueError("temperature must be finite and between 0 and 2.")
+        if temperature is not None and (
+            isinstance(temperature, bool)
+            or not isinstance(temperature, (int, float))
+            or not math.isfinite(float(temperature))
+            or not 0.0 <= temperature <= 2.0
+        ):
+            raise ValueError("temperature must be finite and between 0 and 2.")
 
         if client is None:
             try:
