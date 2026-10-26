@@ -13,7 +13,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
 - post-run budget assessments for recorded cost, token usage, and per-case latency;
 - offline slice analysis by case tag, risk category, or selected scalar metadata, with per-grader breakdowns;
-- deterministic exact-match, schema, rule-based, and trajectory graders;
+- deterministic exact-match, substring, regular-expression, numeric-tolerance, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
 - optional synchronous and native-async OpenAI-compatible structured-output LLM judges, rubric representation, and human calibration;
@@ -21,7 +21,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - explicit baselines and deterministic regression gates;
 - quality/cost and quality/latency trade-off frontiers;
 - machine-readable, human-readable, and auditable evidence packages;
-- a provider-free CLI for validating recorded runs, comparing baseline/candidate revisions, and enforcing post-run budgets;
+- a provider-free CLI for validating recorded runs, comparing baseline/candidate revisions, analyzing slices, and enforcing post-run budgets;
 - integration adapters for three existing portfolio projects;
 - CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
@@ -146,6 +146,45 @@ validate_suite(suite)
 
 The runners invoke this check automatically. Contract validation catches structural inconsistencies;
 it does not prove that the test cases, labels, graders, or model outputs are semantically correct.
+
+## Deterministic grader primitives
+
+Use deterministic checks where a result can be judged without a second model call. Besides exact match,
+schema, rule-based, and trajectory checks, the library includes substring, regular-expression, and
+numeric-tolerance graders.
+
+```python
+from ai_eval_engineering import ContainsGrader, NumericToleranceGrader, RegexGrader
+from ai_eval_engineering.domain import EvaluationCase, SystemOutput
+
+contains = ContainsGrader().grade(
+    EvaluationCase("contains", {}, expected="delayed"),
+    SystemOutput("contains", "Your shipment is DELAYED"),
+)
+
+format_check = RegexGrader(pattern=r"ORDER-[0-9]{4}", full_match=True).grade(
+    EvaluationCase("order-id", {}, expected=None),
+    SystemOutput("order-id", "ORDER-1234"),
+)
+
+numeric_check = NumericToleranceGrader(abs_tol=0.05, rel_tol=0.01).grade(
+    EvaluationCase("temperature", {}, expected=20.0),
+    SystemOutput("temperature", 20.1),
+)
+```
+
+- `ContainsGrader` uses the case's expected string as a substring by default; set `substring=` to
+  configure a shared target instead. Case-insensitive matching is the default.
+- `RegexGrader` uses the case's expected string as the pattern by default or accepts a fixed
+  `pattern=`. It supports search or full-match semantics and optional case-insensitive matching.
+  Only use trusted patterns: Python's regular-expression engine does not impose a time limit.
+- `NumericToleranceGrader` compares finite numeric expected/output values using
+  `abs(actual - expected) <= abs_tol + rel_tol * abs(expected)`. It reports a binary score, plus
+  the observed and allowed errors in grader metadata; it does not pretend that this score is a
+  normalized measure of error severity.
+
+Type mismatches fail the case explicitly. These graders stay deterministic, dependency-free, and
+separate from the optional LLM-as-judge path.
 
 ## Asynchronous evaluation
 
