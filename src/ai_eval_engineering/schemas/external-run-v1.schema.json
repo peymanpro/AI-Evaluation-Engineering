@@ -4,6 +4,7 @@
   "title": "AI Evaluation Engineering External Run",
   "description": "Version 1 interchange envelope for importing completed evaluation runs from external tools.",
   "type": "object",
+  "additionalProperties": false,
   "required": ["schema_version", "manifest", "cases"],
   "properties": {
     "schema_version": {
@@ -45,6 +46,7 @@
     },
     "manifest": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "run_id",
         "suite_version",
@@ -74,6 +76,7 @@
     },
     "case": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["id", "input"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
@@ -94,6 +97,7 @@
     },
     "output": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["case_id", "output"],
       "properties": {
         "case_id": {"type": "string", "minLength": 1},
@@ -118,6 +122,7 @@
     },
     "grader": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["grader", "passed", "score", "details"],
       "properties": {
         "grader": {"type": "string", "minLength": 1},
@@ -129,6 +134,7 @@
     },
     "caseResult": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["case", "output", "graders"],
       "properties": {
         "case": {"$ref": "#/$defs/case"},
