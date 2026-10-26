@@ -405,9 +405,39 @@ The status is one of `WITHIN_BUDGET`, `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, 
 data that a case did not record, the result is incomplete unless a known measurement already proves
 the budget was exceeded. Known token counts from multiple graders are summed per case.
 
-This is a post-run budget assessment, not a live spend limiter: it cannot stop a request before a
-provider charges for it. Costs are not inferred from token counts because provider/model pricing
-varies; adapters must record the actual cost they can measure.
+This is a post-run assessment of recorded measurements. It cannot stop a request already sent
+to a provider, and costs are not inferred from tokens because provider/model pricing varies; adapters
+must record the actual cost they can measure.
+
+For opt-in live scheduling control, use `run_budgeted` on either runner:
+
+```python
+from ai_eval_engineering import RunBudgetPolicy
+
+budgeted = runner.run_budgeted(
+    suite,
+    manifest,
+    policy=RunBudgetPolicy(max_total_cost_usd=2.50),
+)
+
+print(budgeted.status)
+print(budgeted.known_cost_usd)
+print(budgeted.pending_case_ids)
+print(budgeted.stop_reason)
+```
+
+For asynchronous execution, call `await async_runner.run_budgeted(..., policy=policy)`. A
+`BudgetedRunResult` is intentionally different from `EvaluationRun`: it identifies completed cases
+and cases not started when the guard stopped work. The guard uses measured `SystemOutput.cost_usd`,
+per-case `latency_ms`, and grader `metadata["usage"]` when the corresponding limit is configured.
+If required usage evidence is missing or malformed, it stops scheduling further cases instead of
+assuming zero usage. Token usage becomes known after grading, so the current case's grader calls may
+already have incurred cost.
+
+The asynchronous guarded runner starts cases in batches up to `max_concurrency` and waits for every
+case in a batch to finish before scheduling another batch. The request(s) already in flight when a
+limit is crossed can still push spend beyond it. This is **not a hard spend cap**; use provider-side
+spend limits as the final protection against unexpected charges.
 
 ## Offline slice analysis
 
