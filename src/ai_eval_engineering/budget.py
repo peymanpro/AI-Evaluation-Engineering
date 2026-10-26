@@ -460,8 +460,7 @@ class _LiveBudgetGuard:
                 ),
             )
         if (
-            self._stop_status is None
-            and self.policy.max_total_tokens is not None
+            self.policy.max_total_tokens is not None
             and self._known_tokens >= self.policy.max_total_tokens
         ):
             self._stop(
@@ -490,8 +489,7 @@ class _LiveBudgetGuard:
         if cost is not None:
             self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
             if (
-                self._stop_status is None
-                and self.policy.max_case_cost_usd is not None
+                self.policy.max_case_cost_usd is not None
                 and cost > float(self.policy.max_case_cost_usd)
             ):
                 self._stop(
@@ -502,8 +500,7 @@ class _LiveBudgetGuard:
                     ),
                 )
             if (
-                self._stop_status is None
-                and self.policy.max_total_cost_usd is not None
+                self.policy.max_total_cost_usd is not None
                 and self._known_cost_usd >= float(self.policy.max_total_cost_usd)
             ):
                 self._stop(
@@ -544,10 +541,7 @@ class _LiveBudgetGuard:
                         if latency_issues
                         else f"case {case_id!r} has invalid latency evidence",
                     )
-            elif (
-                self._stop_status is None
-                and latency > latency_limit
-            ):
+            elif latency > latency_limit:
                 self._stop(
                     "BUDGET_LIMIT_REACHED",
                     (
