@@ -52,6 +52,24 @@ class SlowAndFailingAdapter:
         return SystemOutput(case.id, None)
 
 
+class TimeoutAdapter:
+    def __init__(self) -> None:
+        self.cancelled = False
+
+    async def run(self, case: EvaluationCase) -> SystemOutput:
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+        return SystemOutput(case.id, None)
+
+
+class NativeTimeoutAdapter:
+    async def run(self, case: EvaluationCase) -> SystemOutput:
+        raise TimeoutError("the adapter raised its own timeout")
+
+
 def make_suite() -> EvaluationSuite:
     return EvaluationSuite(
         "suite-v1",
@@ -137,3 +155,53 @@ def test_async_runner_cancels_other_workers_on_failure() -> None:
         asyncio.run(runner.run(suite, manifest_for(suite)))
 
     assert adapter.slow_cancelled is True
+
+
+
+@pytest.mark.parametrize(
+    ("value", "error", "message"),
+    [
+        (True, TypeError, "numeric"),
+        ("5", TypeError, "numeric"),
+        (0, ValueError, "finite and positive"),
+        (-1, ValueError, "finite and positive"),
+        (float("inf"), ValueError, "finite and positive"),
+        (float("nan"), ValueError, "finite and positive"),
+    ],
+)
+def test_async_runner_rejects_invalid_timeout(
+    value: object, error: type[Exception], message: str
+) -> None:
+    with pytest.raises(error, match=message):
+        AsyncEvaluationRunner(
+            DelayedEchoAdapter(),
+            [ExactMatchGrader()],
+            timeout_per_case_seconds=value,  # type: ignore[arg-type]
+        )
+
+
+def test_async_runner_times_out_and_cancels_stuck_adapter() -> None:
+    suite = EvaluationSuite("suite-v1", (EvaluationCase("stuck", {}),))
+    adapter = TimeoutAdapter()
+    runner = AsyncEvaluationRunner(
+        adapter,
+        [ExactMatchGrader()],
+        timeout_per_case_seconds=0.001,
+    )
+
+    with pytest.raises(TimeoutError, match="timed out for case 'stuck'"):
+        asyncio.run(runner.run(suite, manifest_for(suite)))
+
+    assert adapter.cancelled is True
+
+
+def test_adapter_timeout_error_is_not_misreported_as_runner_deadline() -> None:
+    suite = EvaluationSuite("suite-v1", (EvaluationCase("case-a", {}),))
+    runner = AsyncEvaluationRunner(
+        NativeTimeoutAdapter(),  # type: ignore[arg-type]
+        [ExactMatchGrader()],
+        timeout_per_case_seconds=1.0,
+    )
+
+    with pytest.raises(TimeoutError, match="adapter raised its own timeout"):
+        asyncio.run(runner.run(suite, manifest_for(suite)))
