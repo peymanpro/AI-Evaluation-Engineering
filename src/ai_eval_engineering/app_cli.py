@@ -13,6 +13,7 @@ from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
 from .release_policy import (
     ReleasePolicy,
+    export_release_policy_payload,
     get_release_policy_schema,
     load_release_policy_json,
 )
@@ -239,10 +240,7 @@ def _compare_runs(args: argparse.Namespace) -> int:
     )
     output = asdict(decision)
     if release_policy is not None:
-        output["policy"] = {
-            "name": release_policy.name,
-            "schema_version": 1,
-        }
+        output["policy"] = export_release_policy_payload(release_policy)
     _print_json(output)
     return 0 if decision.status == "PASS" else 1
 
