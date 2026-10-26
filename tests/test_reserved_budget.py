@@ -426,3 +426,52 @@ def test_component_that_exceeds_its_declared_reservation_is_flagged() -> None:
     assert result.incomplete_case_ids == ("case-0",)
     assert result.unresolved_cost_case_ids == ()
     assert result.within_budget is False
+
+def test_async_missing_cost_evidence_is_not_hidden_by_concurrent_budget_stop() -> None:
+    suite = make_suite(2)
+
+    class MissingThenDeclinedAdapter:
+        def __init__(self) -> None:
+            self.missing_cost_returned = asyncio.Event()
+
+        async def run(self, case: EvaluationCase) -> SystemOutput:
+            raise AssertionError("reserved execution must use run_with_budget")
+
+        async def run_with_budget(
+            self, case: EvaluationCase, *, max_cost_usd: float
+        ) -> SystemOutput:
+            if case.id == "case-0":
+                # Let the sibling enter its adapter before returning ambiguous
+                # cost evidence; then the sibling's refusal races with our stop.
+                await asyncio.sleep(0)
+                self.missing_cost_returned.set()
+                return SystemOutput(
+                    case_id=case.id,
+                    output=case.input["answer"],
+                    latency_ms=10.0,
+                    cost_usd=None,
+                )
+            await self.missing_cost_returned.wait()
+            raise RequestBudgetExceeded("known quote does not fit its reservation")
+
+    async def run_scenario():
+        adapter = MissingThenDeclinedAdapter()
+        return await AsyncEvaluationRunner(
+            adapter, [ExactMatchGrader()], max_concurrency=2
+        ).run_reserved_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=ReservedBudgetPolicy(
+                max_total_cost_usd=1.0,
+                max_case_cost_usd=0.5,
+            ),
+        )
+
+    result = asyncio.run(run_scenario())
+
+    assert result.status == "INCOMPLETE_BUDGET_EVIDENCE"
+    assert result.unresolved_cost_case_ids == ("case-0",)
+    assert result.incomplete_case_ids == ("case-0",)
+    assert result.not_started_case_ids == ("case-1",)
+    assert result.known_cost_usd == 0.0
+    assert result.reserved_cost_usd == pytest.approx(0.5)
