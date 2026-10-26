@@ -1,228 +1,249 @@
 # AI Evaluation Engineering
 
-A provider-neutral evaluation layer for systematically measuring, comparing, and regression-testing AI systems.
+**AI Evaluation Engineering is a provider-neutral Python library for evaluating, comparing, and regression-testing AI systems.** It provides reusable evaluation contracts, synchronous and asynchronous runners, graders, statistical release gates, budget controls, and auditable run artifacts—so AI evaluation can be part of a repeatable engineering workflow rather than a collection of one-off scripts.
 
-This repository treats evaluation as an engineering discipline rather than a final metric-reporting step.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![CI](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml)
+[![Latest GitHub Release](https://img.shields.io/github/v/release/peymanpro/AI-Evaluation-Engineering)](https://github.com/peymanpro/AI-Evaluation-Engineering/releases)
 
-## What the library provides
+The library keeps case-level observations and run metadata available for inspection. It helps teams answer not only *“What score did this model get?”*, but also *“Which cases failed, how certain is the comparison, what did the run cost, and is the evidence complete enough to support a release decision?”*
 
-- typed evaluation cases, suites, run manifests, outputs, and grader results;
-- versioned JSON suite files with strict import/export validation, reusable datasets, and a packaged schema;
-- reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters and opt-in transient-failure retries;
-- preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
-- atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
-- post-run budget assessments for recorded cost, token usage, and per-case latency;
-- offline slice analysis by case tag, risk category, or selected scalar metadata, with per-grader breakdowns;
-- deterministic exact-match, substring, regular-expression, numeric-tolerance, JSON-field, composite, schema, rule-based, and trajectory graders;
-- typed agent trajectory replay and separate task/step success analysis;
-- an adversarial taxonomy and executable security-regression cases;
-- optional synchronous and native-async OpenAI-compatible structured-output LLM judges, rubric representation, and human calibration;
-- bootstrap confidence intervals, paired comparison, effect-size reporting, and run-to-run variance analysis;
-- explicit baselines and deterministic regression gates;
-- quality/cost and quality/latency trade-off frontiers;
-- machine-readable, human-readable, and auditable evidence packages;
-- a provider-free CLI for validating recorded runs, comparing baseline/candidate revisions, analyzing slices, and enforcing post-run budgets;
-- integration adapters for three existing portfolio projects;
-- CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
-- versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
-- decision-grade paired release gates and failure-delta triage between system versions;
-- versioned multi-metric release-policy JSON files with strict validation, a packaged schema, and reproducible CLI-based release decisions;
-- failure-aware synchronous and asynchronous execution reports with explicit per-case errors and resumable completed cases;
-- persistent failure memory and class-aware calibration metrics;
-- installable Python distributions with PyPI Trusted Publishing support.
+It is an evaluation library—not a hosted experimentation platform, model-serving system, or guarantee of production quality.
 
-## Architecture
+## Table of contents
 
-    AI System Under Test
-            ↓
-     Evaluation Adapter
-            ↓
-     Evaluation Runner
-            ↓
-          Graders
-       ↙     ↓      ↘
-    rules  schema  trajectory / judge
-            ↓
-    Statistical Analysis
-            ↓
-      Regression Gate
-            ↓
-      Evidence Package
+- [Why this library exists](#why-this-library-exists)
+- [Capabilities](#capabilities)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [How the library works](#how-the-library-works)
+- [Core data model](#core-data-model)
+- [Evaluation suites and data contracts](#evaluation-suites-and-data-contracts)
+- [Grading](#grading)
+- [Asynchronous execution, retries, and checkpoints](#asynchronous-execution-retries-and-checkpoints)
+- [Budget controls](#budget-controls)
+- [Failure-aware execution reports](#failure-aware-execution-reports)
+- [Comparisons and release policies](#comparisons-and-release-policies)
+- [Command-line interface](#command-line-interface)
+- [LLM-as-a-judge](#llm-as-a-judge)
+- [Agent, security, online, and trade-off evaluation](#agent-security-online-and-trade-off-evaluation)
+- [Integrations](#integrations)
+- [Evidence and methodology](#evidence-and-methodology)
+- [Limitations and non-goals](#limitations-and-non-goals)
+- [Development](#development)
+- [Release status](#release-status)
 
-The framework preserves raw case-level observations so aggregate claims can be inspected and reproduced.
+## Why this library exists
+
+A benchmark script can produce a score, but a reliable engineering workflow needs more context: a stable test population, a known system revision, validated outputs, case-level results, appropriate uncertainty estimates, and explicit rules for deciding whether a change is acceptable.
+
+AI Evaluation Engineering brings those pieces into one provider-neutral Python API:
+
+1. Define cases and a versioned evaluation suite.
+2. Run a system adapter and record its outputs.
+3. Grade each case with deterministic checks, a configured judge, or a combination.
+4. Preserve results and metadata so runs can be inspected or resumed.
+5. Compare baseline and candidate runs using explicit metrics and release policies.
+6. Export evidence for CI, debugging, and later review.
+
+The library separates **execution**, **grading**, **statistical interpretation**, and **release decisions**. A successful test run verifies the implemented contracts and examples; it does not by itself prove that an evaluation suite represents production traffic or that a model is safe in every setting.
+
+## Capabilities
+
+| Area | What the library provides |
+| --- | --- |
+| Evaluation core | Typed cases, suites, run manifests, system outputs, grader results, and recorded runs |
+| Execution | Synchronous and bounded-concurrency asynchronous runners, optional per-attempt deadlines, and resumable checkpoints |
+| Grading | Exact-match, substring, regex, numeric-tolerance, JSON-field, schema, rule-based, trajectory, and composite graders |
+| Model-based judging | Optional synchronous and native-async OpenAI-compatible judges with structured outputs |
+| Data interchange | Strict, versioned JSON contracts for suites, recorded runs, release policies, and execution reports; Promptfoo v3 result import |
+| Failure handling | Explicit per-case execution reports, failure-delta comparisons, and persistent failure memory |
+| Budget visibility | Post-run assessments, observed-usage scheduling guards, and reservation-based budget execution for components that enforce request ceilings |
+| Statistical decisions | Paired comparisons, bootstrap confidence intervals, direction-aware metric policies, and multi-metric release gates |
+| Diagnostics | Offline slice analysis by tags, risk categories, or explicitly selected case-metadata fields |
+| Other evaluation views | Agent trajectories, adversarial test fixtures, online-evaluation primitives, and quality/cost or quality/latency trade-off frontiers |
+| Evidence | Machine-readable run records and auditable evidence packages |
+
+## Installation
+
+**PyPI publication is intentionally deferred while the project remains in feature development.** Install from a source checkout rather than assuming the package is available from the public package index.
+
+~~~bash
+git clone https://github.com/peymanpro/AI-Evaluation-Engineering.git
+cd AI-Evaluation-Engineering
+python -m pip install -e .
+~~~
+
+For tests and development tools:
+
+~~~bash
+python -m pip install -e ".[dev]"
+~~~
+
+For the optional OpenAI-compatible LLM judge:
+
+~~~bash
+python -m pip install -e ".[openai]"
+~~~
+
+To install the development tools and optional judge SDK together:
+
+~~~bash
+python -m pip install -e ".[dev,openai]"
+~~~
+
+The core library has no mandatory third-party runtime dependencies. The OpenAI SDK is optional and is needed only for the provider-backed judge integration.
 
 ## Quick start
 
-    pip install -e ".[dev]"
-    # For the optional live OpenAI-compatible LLM judge: pip install -e ".[dev,openai]"
-    pytest
-    ai-eval-demo
-    python examples/security_regression.py
-    python examples/tradeoffs.py
-    python examples/integrations.py
-    python examples/promptfoo_release_workflow.py
-    python examples/async_evaluation.py
-    python examples/deterministic_graders.py
-    python examples/retry_policy.py
-    python examples/structured_composite_graders.py
+The following example runs a small, deterministic fixture. Replace the demo adapter with an adapter for the system you actually want to evaluate.
 
-Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
-synthetic fixtures and makes no external model calls.
+~~~python
+from ai_eval_engineering import (
+    AggregatedResult,
+    EvaluationCase,
+    EvaluationRunner,
+    EvaluationSuite,
+    SystemOutput,
+)
+from ai_eval_engineering.graders import ExactMatchGrader
+from ai_eval_engineering.runner import build_run_metadata
 
-## Command-line interface
 
-The `ai-eval` command works with saved external-run-v1 JSON files and makes no provider calls.
-It complements `ai-eval-demo`, which remains a deterministic example that generates a demo report.
+class DemoAdapter:
+    """A synthetic adapter; it does not call an external model."""
 
-```bash
-# Inspect the available commands and print the packaged JSON Schema
-ai-eval --help
-ai-eval schema > external-run-v1.schema.json
-ai-eval suite-schema > evaluation-suite-v1.schema.json
-ai-eval release-policy-schema > release-policy-v1.schema.json
+    def run(self, case: EvaluationCase) -> SystemOutput:
+        return SystemOutput(
+            case_id=case.id,
+            output=case.input["answer"],
+            latency_ms=1.0,
+            cost_usd=0.0,
+        )
 
-# Validate a recorded run file
-ai-eval validate-run run.json
 
-# Compare a baseline and candidate using the grader's numeric score
-ai-eval compare baseline.json candidate.json \
-  --metric quality \
-  --direction higher_is_better \
-  --max-allowed-regression 0.02 \
-  --min-cases 30
+suite = EvaluationSuite(
+    version="support-smoke-v1",
+    cases=(
+        EvaluationCase(
+            id="capital-of-france",
+            input={"question": "What is the capital of France?", "answer": "Paris"},
+            expected="Paris",
+            tags=("smoke",),
+        ),
+    ),
+)
 
-# Multi-metric release gate from a versioned policy file
-ai-eval compare baseline.json candidate.json \
-  --policy examples/policies/quality-latency-safety-v1.json
+manifest = build_run_metadata(
+    suite,
+    system_name="demo-system",
+    system_version="demo-1",
+    configuration={"adapter": "synthetic"},
+    seed=7,
+)
 
-# Enforce recorded cost, token, and latency limits in CI
-ai-eval budget candidate.json \
-  --max-total-cost-usd 2.50 \
-  --max-total-tokens 50000 \
-  --max-case-latency-ms 15000
-```
+runner = EvaluationRunner(DemoAdapter(), [ExactMatchGrader()])
+run = runner.run(suite, manifest)
+summary = AggregatedResult.from_case_results(list(run.cases))
 
-`compare` and `budget` print machine-readable JSON and return exit code `0` only for a passing
-gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
-for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
-returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
+print(run.manifest.run_id)
+print(f"Pass rate: {summary.pass_rate:.0%}")
+print(f"Mean score: {summary.mean_score:.3f}")
+~~~
 
-For multi-metric gates, `--policy` loads a versioned `release-policy-v1` file containing metric directions, regression tolerances, minimum sample sizes, confidence, bootstrap resamples, and a seed. Policy mode rejects per-command metric overrides instead of silently ignoring them, and the result JSON includes the complete policy payload for traceability.
+Expected output includes a pass rate of `100%` and a mean score of `1.000`. The values are deterministic because this example uses a synthetic adapter; they are not a benchmark claim about a real model.
 
-## Versioned run interchange
+## How the library works
 
-The `external-run-v1` format rejects unknown fields at its structured contract boundaries (the
-root envelope, manifest, case result, case definition, system output, and grader record) rather
-than silently dropping data during import/export. Application-owned JSON objects inside case
-inputs, expected values, outputs, metadata, configuration, environment, traces, and grader metadata
-remain extensible. Changes to the envelope itself must be coordinated through an explicit schema
-version instead of relying on unrecognized fields being ignored. Programmatic calls to
-`import_run_payload` also reject cyclic Python containers, which cannot be represented in JSON.
+~~~text
+Evaluation suite + run manifest
+             |
+             v
+      System adapter
+             |
+             v
+    Validated system output
+             |
+             v
+           Graders
+             |
+             v
+     Recorded case results
+             |
+             v
+ Statistical comparison / diagnostics
+             |
+             v
+     Release gate + evidence
+~~~
 
-## Versioned evaluation suites
+The system adapter is the boundary to the system under test. It can wrap an API, local application, agent runtime, or deterministic fixture. The evaluation library validates the adapter's outputs and does not need to own or host the evaluated system.
 
-Keep test cases in a reusable, reviewable JSON file rather than rebuilding every suite in Python.
-Version 1 suite files include a suite version and case IDs, inputs, expected values, tags, metadata,
-and optional risk categories. The importer rejects unknown fields, unsupported schema versions,
-duplicate case IDs, and invalid/non-finite JSON evidence.
+## Core data model
 
-The repository includes a small [suite JSON example](examples/suites/support-smoke-v1.json). Validate
-it from the command line:
+| Type | Role |
+| --- | --- |
+| `EvaluationCase` | One input, expected value, tags, metadata, and optional risk category |
+| `EvaluationSuite` | A versioned collection of evaluation cases |
+| `RunMetadata` | Run identity, suite version, system name and version, configuration, seed, timestamp, and environment |
+| `SystemOutput` | Output plus optional latency, measured cost, and trace |
+| `GraderResult` | A named pass/fail result, numeric score, explanation, and metadata |
+| `EvaluationRun` | A complete manifest and the recorded results for its cases |
+| `EvaluationExecutionReport` | Ordered complete or failed per-case outcomes when using `run_report()` |
 
-```bash
-ai-eval validate-suite examples/suites/support-smoke-v1.json
-ai-eval suite-schema > evaluation-suite-v1.schema.json
-```
+This separation keeps suite data reusable and makes each recorded result traceable to the system version and configuration that produced it.
 
-Load the same dataset from Python and pass it to either runner:
+## Evaluation suites and data contracts
 
-```python
+Versioned JSON suites make test cases reviewable and reusable without embedding executable Python in the data file. A suite file holds case definitions; configure adapters and graders in code.
+
+~~~python
 from ai_eval_engineering import load_suite_json, write_suite_json
 
 suite = load_suite_json("examples/suites/support-smoke-v1.json")
 print(suite.version, len(suite.cases))
 
-# Export a modified suite using an atomic file replacement.
+# Write a modified suite using an atomic file replacement.
 write_suite_json(suite, "data/support-suite-v1.json")
-```
+~~~
 
-The packaged schema can also be retrieved with `get_evaluation_suite_schema()`. A suite file defines
-cases and evidence contracts, not the executable system adapter or graders; configure those in code
-so loading data never executes arbitrary Python.
+Validate the included example and inspect the packaged schema:
 
-## Input contract validation
+~~~bash
+ai-eval validate-suite examples/suites/support-smoke-v1.json
+ai-eval suite-schema > evaluation-suite-v1.schema.json
+~~~
 
-Both runners validate the suite and run manifest before making system calls. They reject duplicate
-case IDs, empty identifiers, non-JSON values and non-finite numbers in case evidence, or a manifest
-whose suite version does not match the cases being evaluated. Adapter outputs and grader results are
-also checked before they enter the recorded run, including output IDs, finite cost/latency, and unique
-grader names per case.
+The versioned importers validate structured contract boundaries, reject unknown fields at those boundaries, reject unsupported schema versions and malformed or non-finite evidence, and detect duplicate case or grader identifiers where uniqueness is required. Application-owned JSON objects—such as case inputs, expected values, outputs, and metadata—remain extensible.
 
-You can validate a dataset explicitly before scheduling model calls:
+The versioned interchange formats include:
 
-```python
-from ai_eval_engineering import EvaluationSuite, validate_suite
+- **`evaluation-suite-v1`** — reusable suite definitions.
+- **`external-run-v1`** — normalized recorded results, including results imported from external evaluators.
+- **`release-policy-v1`** — reproducible settings for multi-metric release decisions.
+- **`execution-report-v1`** — complete or partial per-case execution outcomes, including captured failures.
 
-suite = EvaluationSuite("support-v1", cases=...)
-validate_suite(suite)
-```
+Schemas are available from the installed package. For example, use `get_evaluation_suite_schema()`, `get_external_run_schema()`, `get_release_policy_schema()`, or `get_execution_report_schema()` when another tool needs to validate a file before importing it.
 
-The runners invoke this check automatically. Contract validation catches structural inconsistencies;
-it does not prove that the test cases, labels, graders, or model outputs are semantically correct.
+## Grading
 
-## Deterministic grader primitives
+Choose a grader based on the evidence you need. Deterministic graders are preferable when the expected behavior can be expressed precisely; they do not require a second model call.
 
-Use deterministic checks where a result can be judged without a second model call. Besides exact match,
-schema, rule-based, and trajectory checks, the library includes substring, regular-expression, and
-numeric-tolerance graders.
+### Deterministic graders
 
-```python
-from ai_eval_engineering import ContainsGrader, NumericToleranceGrader, RegexGrader
-from ai_eval_engineering.domain import EvaluationCase, SystemOutput
+The library includes:
 
-contains = ContainsGrader().grade(
-    EvaluationCase("contains", {}, expected="delayed"),
-    SystemOutput("contains", "Your shipment is DELAYED"),
-)
+- **Exact match** — compare expected and actual values, with configurable normalization.
+- **Substring** — check for an expected or configured substring.
+- **Regular expression** — check a pattern using search or full-match semantics.
+- **Numeric tolerance** — compare finite numeric values using explicit absolute and relative tolerances.
+- **JSON field** — compare a value at a JSON Pointer path such as `/decision` or `/items/0/id`.
+- **Composite** — combine named graders with explicit weights and an `all`, `any`, or score-threshold pass rule.
+- **Schema, rule-based, and trajectory graders** — validate structured outputs, custom rules, and agent execution traces.
 
-format_check = RegexGrader(pattern=r"ORDER-[0-9]{4}", full_match=True).grade(
-    EvaluationCase("order-id", {}, expected=None),
-    SystemOutput("order-id", "ORDER-1234"),
-)
+Example of grading structured output:
 
-numeric_check = NumericToleranceGrader(abs_tol=0.05, rel_tol=0.01).grade(
-    EvaluationCase("temperature", {}, expected=20.0),
-    SystemOutput("temperature", 20.1),
-)
-```
-
-- `ContainsGrader` uses the case's expected string as a substring by default; set `substring=` to
-  configure a shared target instead. Case-insensitive matching is the default.
-- `RegexGrader` uses the case's expected string as the pattern by default or accepts a fixed
-  `pattern=`. It supports search or full-match semantics and optional case-insensitive matching.
-  Only use trusted patterns: Python's regular-expression engine does not impose a time limit.
-- `NumericToleranceGrader` compares finite numeric expected/output values using
-  `abs(actual - expected) <= abs_tol + rel_tol * abs(expected)`. It reports a binary score, plus
-  the observed and allowed errors in grader metadata; it does not pretend that this score is a
-  normalized measure of error severity.
-
-Type mismatches fail the case explicitly. These graders stay deterministic, dependency-free, and
-separate from the optional LLM-as-judge path.
-
-## Structured-field and composite graders
-
-Use `JsonFieldGrader` when an output is a structured object and a decision depends on one
-specific value. It uses a JSON Pointer path such as `/decision`, `/user/tier`, or
-`/items/0/id`. The expected value comes from `case.expected` by default, or from the optional
-`expected_value` argument when the grader is part of a composite policy. Missing paths fail
-explicitly, and field values are not copied into result details or metadata.
-
-`CompositeGrader` runs several synchronous graders over the same case/output and calculates a
-weighted mean of their scores. Component scores must be finite and in `[0, 1]`; grader names must
-be unique. The default pass rule is conservative: **all** component graders must pass. You can
-explicitly select `pass_mode="any"` or `pass_mode="score_threshold"` with `min_score=`.
-
-```python
+~~~python
 from ai_eval_engineering import CompositeGrader, JsonFieldGrader
 from ai_eval_engineering.domain import EvaluationCase, SystemOutput
 
@@ -232,7 +253,7 @@ output = SystemOutput(
     {"decision": "approved", "safety": {"allowed": True}},
 )
 
-policy_grader = CompositeGrader(
+grader = CompositeGrader(
     [
         JsonFieldGrader("/decision", name="decision", expected_value="approved"),
         JsonFieldGrader("/safety/allowed", name="safety", expected_value=True),
@@ -240,275 +261,71 @@ policy_grader = CompositeGrader(
     weights=[0.75, 0.25],
     pass_mode="all",
 )
-result = policy_grader.grade(case, output)
-assert result.passed
-assert result.score == 1.0
-```
 
-Use JSON Pointer escaping for field names that contain a slash (`~1`) or tilde (`~0`). JSON field
-comparisons are exact structural checks (integer and floating-point JSON numbers compare
-numerically); they are not a substitute for `NumericToleranceGrader` when numeric error is allowed.
-Composite graders aggregate synchronous grader results only; async graders require async-aware
-composition. The composite result records component names, pass states, scores, weights, and the
-chosen pass rule, but does not embed child details that may contain sensitive data.
+result = grader.grade(case, output)
+print(result.passed, result.score)
+~~~
 
-## Asynchronous evaluation
+Composite scores must be finite values in `[0, 1]`, and component grader names must be unique. A passing flag and a numeric score are separate fields; their relationship should follow an explicit grader contract.
 
-Use `AsyncEvaluationRunner` when the system under test is accessed through async HTTP clients,
-model APIs, or another asynchronous runtime. Set `max_concurrency` to cap in-flight system calls.
-The runner preserves the original suite order in the returned `EvaluationRun`, even when requests
-finish in a different order, and reuses the existing synchronous grader contract. An optional
-`timeout_per_case_seconds` setting places a deadline on each async system call.
+### Versioned external-run interchange
 
-```python
-import asyncio
+Use `load_run_json()` and `write_run_json()` to import and export normalized run records. The `Promptfoo v3` adapter supports importing its documented JSON result format; it is an interchange adapter, not a replacement for the external evaluator.
 
-from ai_eval_engineering import (
-    AsyncEvaluationRunner,
-    EvaluationCase,
-    EvaluationSuite,
-    SystemOutput,
-)
-from ai_eval_engineering.graders import ExactMatchGrader
-from ai_eval_engineering.runner import build_run_metadata
+~~~python
+from ai_eval_engineering import load_run_json, write_run_json
 
+run = load_run_json("external-results/candidate-run.json")
+write_run_json(run, "normalized/candidate-run.json")
+print(run.manifest.system_version, len(run.cases))
+~~~
 
-class MyAsyncSystem:
-    async def run(self, case: EvaluationCase) -> SystemOutput:
-        response = await your_async_model_client(case.input)
-        return SystemOutput(case_id=case.id, output=response)
+The normalized run schema can be obtained with `get_external_run_schema()`. An external tool remains responsible for mapping its result fields into the documented envelope. Unknown schema versions fail explicitly rather than being guessed.
 
+## Asynchronous execution, retries, and checkpoints
 
-async def main() -> None:
-    suite = EvaluationSuite(
-        "support-v1",
-        (EvaluationCase("case-1", {"question": "Where is my order?"}, expected="shipped"),),
-    )
-    runner = AsyncEvaluationRunner(
-        MyAsyncSystem(),
-        [ExactMatchGrader()],
-        max_concurrency=8,
-        timeout_per_case_seconds=30.0,
-    )
-    run = await runner.run(
-        suite,
-        build_run_metadata(suite, "support-assistant", "git:abc123"),
-    )
-    print([(item.case.id, item.graders[0].passed) for item in run.cases])
+### Asynchronous runner
 
+`AsyncEvaluationRunner` supports bounded concurrency and returns results in suite order. It can apply a per-case adapter deadline and supports synchronous graders or awaitable grader results.
 
-asyncio.run(main())
-```
-
-The adapter's `run` method must be async and return a `SystemOutput`. Both synchronous and
-asynchronous graders are accepted. Synchronous graders execute on the event loop, so keep them fast
-and non-blocking; asynchronous graders are awaited. If an adapter or grader raises, pending worker
-tasks are cancelled and the runner raises instead of returning a partial run. A timeout cancels the
-current adapter coroutine and fails the run; it does not return a partial `EvaluationRun`. The async
-runner does not silently retry requests because retry safety and rate limits are provider-specific.
-See the [async demo](examples/async_evaluation.py).
-
-### Asynchronous LLM judge
-
-For model-based grading, `AsyncOpenAICompatibleJudge` uses the SDK's native `AsyncOpenAI` client,
-and `AsyncOpenAIJudgeGrader` adapts it to the async runner. Install the optional extra with
-`pip install "ai-evaluation-engineering[openai]"`. The request uses the same JSON Schema structured
-output contract, evidence serialization, rubric validation, and explicit label-to-pass mapping as
-the synchronous judge. No API call is made until `await grader.grade(...)` or an async run executes.
-
-```python
-from ai_eval_engineering import AsyncOpenAICompatibleJudge, AsyncOpenAIJudgeGrader
-
-# The OpenAI SDK reads OPENAI_API_KEY from the environment by default.
-judge = AsyncOpenAICompatibleJudge(
-    model="your-model",
-    timeout=30.0,
-    max_retries=2,
-)
-judge_grader = AsyncOpenAIJudgeGrader(
-    judge,
-    rubric,
-    name="quality_judge",
-    pass_labels=("pass", "passed"),
-)
-runner = AsyncEvaluationRunner(
-    async_system,
-    [judge_grader],
-    max_concurrency=8,
-    timeout_per_case_seconds=45.0,
-)
-run = await runner.run(suite, manifest)
-```
-
-The runner deadline covers the async system-adapter call; the judge's own `timeout` configures
-its provider request. Choose the limits with your rate limits and latency budget in mind. CI tests
-use a fake async client and make no live model calls; calibration against representative
-human-labelled examples is still required.
-
-
-## Transient adapter retries
-
-Retries are opt-in. Pass a `RetryPolicy` to either runner to retry only configured exception
-classes from the system adapter, using bounded exponential backoff. Without a policy, the runner
-makes exactly one adapter attempt as before.
-
-```python
-from ai_eval_engineering import RetryPolicy
-from ai_eval_engineering.runner import build_run_metadata
-
-events = []
-policy = RetryPolicy(
-    max_attempts=3,  # includes the first request
-    retryable_exceptions=(TimeoutError, ConnectionError),
-    initial_delay_seconds=0.25,
-    backoff_factor=2,
-    max_delay_seconds=2,
-    on_retry=events.append,
-)
-
-manifest = build_run_metadata(
-    suite,
-    "support-assistant",
-    "git:abc123",
-    retry_policy=policy,  # record the exact retry configuration with the run
-)
-runner = EvaluationRunner(
-    system_adapter,
-    graders,
-    retry_policy=policy,
-)
-run = runner.run(suite, manifest)
-```
-
-The policy defaults to retrying built-in `TimeoutError` and `ConnectionError` only when it has
-been explicitly enabled. Add the exception types used by your HTTP/provider client to
-`retryable_exceptions` when appropriate; the library does not retry arbitrary exceptions by
-default. `max_attempts` counts the initial call, not just the retries. The optional callback
-receives a `RetryEvent` with the case ID, failed/next attempt numbers, exception type, and delay;
-raw exception messages are deliberately not copied into that event. If the callback itself fails,
-the run fails rather than silently dropping an observability hook.
-
-Retry wrapping is limited to the system-adapter call. Graders and output/manifest validation are
-never retried. In the async runner, the configured timeout applies to each adapter attempt; the
-backoff delay is outside that per-attempt deadline. The retry settings are included in the run
-manifest configuration, and the runner rejects a manifest whose recorded policy does not match the
-actual policy. This matters when resuming from a checkpoint.
-
-A transport error or timeout can happen after a provider has processed and billed a request. Retrying
-may duplicate work, spend, or side effects, so use provider-supported idempotency keys when available
-and set retryable exceptions deliberately. This is not a rate limiter, circuit breaker, or hard
-spend limiter. The [retry demo](examples/retry_policy.py) exercises synchronous and asynchronous
-runners without network calls.
-
-## Resumable evaluation runs
-
-Pass `checkpoint_path` to either runner to atomically persist each completed case and resume after
-a later case fails. On resume, the runner verifies the complete suite fingerprint and the system,
-version, configuration, seed, and environment recorded in the manifest. Completed cases are reused;
-only unfinished cases execute again.
-
-```python
-runner = EvaluationRunner(async_or_sync_system, graders)
-run = runner.run(
-    suite,
-    manifest,
-    checkpoint_path=".local-runs/support-assistant.checkpoint.json",
-)
-```
-
-For an async adapter, the call is awaited in the normal way:
-
-```python
+~~~python
 run = await AsyncEvaluationRunner(
-    async_system,
+    async_adapter,
     graders,
     max_concurrency=8,
     timeout_per_case_seconds=30.0,
-).run(suite, manifest, checkpoint_path=".local-runs/support-assistant.checkpoint.json")
-```
+).run(suite, manifest)
+~~~
 
-If a case raises, the run still raises instead of presenting partial evidence as complete, while the
-checkpoint retains earlier successful cases. Re-running with the same suite, manifest identity, and
-path resumes the unfinished cases. A completed checkpoint is also reused; choose a new path or
-remove the old checkpoint to start a fresh evaluation. Incompatible or malformed checkpoints raise
-`CheckpointError` and are never silently discarded.
+### Explicit retry policy
 
-Checkpoints contain the run manifest, case inputs, expected values, outputs, traces, and grader
-details. They are written atomically but are not encrypted and are not designed for multiple
-processes to write concurrently to the same path. Keep them out of source control and protect them
-according to the sensitivity of the evaluated data.
+Retries are opt-in and wrap the system-adapter call only. A `RetryPolicy` lets callers choose the attempt limit, retryable exception classes, bounded backoff, and an optional retry-event callback. Grading and output validation are not retried. The configured policy is recorded in the run manifest and checked when running or resuming.
 
-## Run budget assessment
+A timeout or connection failure can happen after a provider has processed and billed a request. Retrying can therefore duplicate spend or side effects. Configure retryable exceptions deliberately and use provider-supported idempotency keys when available. This feature is not a rate limiter, circuit breaker, or spend limiter.
 
-`RunBudgetPolicy` evaluates measured cost, token usage, and per-case latency against explicit
-limits. Cost and latency come from `SystemOutput.cost_usd` and `SystemOutput.latency_ms`;
-token usage is read from grader `metadata["usage"]` (the OpenAI-compatible judges record token
-counts when the provider returns them).
+### Resumable runs
 
-```python
-from ai_eval_engineering import RunBudgetPolicy, assess_run_budget
+Pass `checkpoint_path` to `run()` or `run_report()` to persist completed cases atomically and reuse them after a later failure. Before resuming, the library validates the suite fingerprint and run identity, including system, version, configuration, seed, and environment. Only unfinished or failed cases are attempted again.
 
-assessment = assess_run_budget(
-    run,
-    RunBudgetPolicy(
-        max_total_cost_usd=2.50,
-        max_case_cost_usd=0.50,
-        max_total_tokens=50_000,
-        max_case_latency_ms=15_000,
-    ),
-)
+Checkpoints can contain prompts, inputs, expected values, outputs, traces, and grader details. They are not encrypted and are not designed for concurrent writers in multiple processes. Keep them out of source control and protect them according to the sensitivity of the evaluated data.
 
-if not assessment.passed:
-    print(assessment.status)
-    print(assessment.violations)
-    print(assessment.issues)
-```
+## Budget controls
 
-The status is one of `WITHIN_BUDGET`, `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or
-`INVALID_EVIDENCE`. Missing measurements are never counted as zero: when a configured limit needs
-data that a case did not record, the result is incomplete unless a known measurement already proves
-the budget was exceeded. Known token counts from multiple graders are summed per case.
+The library exposes three distinct budget behaviors. They serve different purposes and should not be treated as interchangeable.
 
-This is a post-run assessment of recorded measurements. It cannot stop a request already sent
-to a provider, and costs are not inferred from tokens because provider/model pricing varies; adapters
-must record the actual cost they can measure.
+### Post-run assessment
 
-For opt-in live scheduling control, use `run_budgeted` on either runner:
+`assess_run_budget()` evaluates measured cost, token usage, and latency recorded in a completed run using `RunBudgetPolicy`. Missing required measurements produce incomplete evidence instead of being counted as zero.
 
-```python
-from ai_eval_engineering import RunBudgetPolicy
+### Observed-usage scheduling guard
 
-budgeted = runner.run_budgeted(
-    suite,
-    manifest,
-    policy=RunBudgetPolicy(max_total_cost_usd=2.50),
-)
+`run_budgeted()` on the synchronous or asynchronous runner observes measured usage and stops scheduling additional work when the configured threshold is reached or required evidence is missing. An already-sent request or an in-flight batch may still incur charges before the guard can react.
 
-print(budgeted.status)
-print(budgeted.known_cost_usd)
-print(budgeted.pending_case_ids)
-print(budgeted.stop_reason)
-```
+### Reservation-based execution
 
-For asynchronous execution, call `await async_runner.run_budgeted(..., policy=policy)`. A
-`BudgetedRunResult` is intentionally different from `EvaluationRun`: it identifies completed cases
-and cases not started when the guard stopped work. The guard uses measured `SystemOutput.cost_usd`,
-per-case `latency_ms`, and grader `metadata["usage"]` when the corresponding limit is configured.
-If required usage evidence is missing or malformed, it stops scheduling further cases instead of
-assuming zero usage. Token usage becomes known after grading, so the current case's grader calls may
-already have incurred cost.
+For adapters and graders that can enforce a per-request ceiling, `run_reserved_budgeted()` reserves a per-case cost envelope before dispatch and accounts for outstanding reservations, including paid graders.
 
-The asynchronous observed-budget runner starts cases in batches up to `max_concurrency` and waits
-for every case in the current batch to finish before scheduling another batch. Because ordinary adapters
-may not declare an enforceable per-request ceiling, this mode remains an observed-usage guard rather than
-a hard admission-control contract.
-
-### Reserved budget execution
-
-For components that can enforce an explicit request cost ceiling, use the stricter
-`run_reserved_budgeted` path:
-
-```python
+~~~python
 from ai_eval_engineering import ReservedBudgetPolicy
 
 result = runner.run_reserved_budgeted(
@@ -519,238 +336,24 @@ result = runner.run_reserved_budgeted(
         max_case_cost_usd=0.50,
     ),
 )
+
 print(result.status)
 print(result.known_cost_usd)
 print(result.reserved_cost_usd)
 print(result.pending_case_ids)
 print(result.incomplete_case_ids)
 print(result.unresolved_cost_case_ids)
-print(result.not_started_case_ids)
-```
+~~~
 
-This strict mode requires the system adapter to implement
-`run_with_budget(case, *, max_cost_usd)`. It must enforce the supplied ceiling *before* submitting
-provider requests and return the actual aggregate cost in `SystemOutput.cost_usd`. A component that can
-quote a request but knows it cannot fit the allowance should raise `RequestBudgetExceeded` before
-sending it. A billable grader must similarly implement
-`grade_with_budget(case, output, *, max_cost_usd)` and report its aggregate actual cost in
-`GraderResult.metadata["cost_usd"]`. Deterministic graders built into the package explicitly declare
-`budget_cost_free = True`; custom graders may use that marker only when they truly make no billable
-calls. Strict mode rejects an unbounded component before any case starts and disables retries.
+Strict reservation mode requires the adapter to implement `run_with_budget(..., max_cost_usd=...)` and every billable grader to implement `grade_with_budget(..., max_cost_usd=...)`. Those components must enforce the supplied allowance before sending billable requests and report actual charges accurately. The library cannot force an arbitrary third-party API or delayed billing system to honor a limit; configure provider-side hard spend limits as an additional safeguard where available.
 
-The run reserves up to the configured per-case ceiling before starting each case, including the cost
-envelope shared by all graders. The asynchronous runner reserves every case in a batch before launching
-any of them; known spend plus outstanding reservations therefore stays within the configured total
-**provided every budget-aware component honors its per-call ceiling**. If the global remainder is below
-the per-case ceiling, the last reservation is smaller, and the adapter/grader must refuse any call that
-cannot fit. If a component reports charges above its allowance, the result is
-`REQUEST_CAP_VIOLATED`; already incurred charges cannot be undone. If a component returns no cost
-measurement, its remaining reservation is retained and no new cases are admitted. `pending_case_ids`
-lists all cases without a complete `CaseResult`; `incomplete_case_ids` identifies cases whose request
-execution started but whose full system-plus-grader result did not complete, while
-`not_started_case_ids` identifies cases that never reached a billable request.
-
-This contract cannot force an arbitrary adapter or external billing platform to obey a ceiling. For an
-actual provider, the adapter must translate the allowance into enforceable request constraints or refuse
-the call. Also configure provider/organization hard spend limits as a second line of defense: provider
-billing enforcement may be delayed, so no client library can promise an exact universal dollar ceiling
-when the underlying provider itself allows accounting overshoot.
-
-## Offline slice analysis
-
-A single pass rate can hide a serious failure in a smaller or higher-risk group. Use
-`analyze_run_slices` to break a completed run down by case tag, risk category, or one explicitly
-selected top-level metadata field. Each slice reports its case count, all-graders pass rate, mean
-case score, whether it meets the configured minimum case count, and per-grader pass rates/scores.
-
-```python
-from ai_eval_engineering import analyze_run_slices
-
-for item in analyze_run_slices(run, by="risk_category", min_cases=30):
-    print(
-        item.value,
-        item.case_count,
-        item.pass_rate,
-        item.meets_min_cases,
-    )
-    for grader in item.grader_metrics:
-        print("  ", grader.grader, grader.pass_rate, grader.mean_score)
-```
-
-Select only the slice dimensions relevant to the evaluation policy. Metadata slicing supports
-scalar values only; arbitrary nested objects are rejected rather than silently stringified. Missing
-classifications appear as a `None` slice by default, and small slices are retained and flagged rather
-than dropped. A case with multiple tags appears in each corresponding tag slice, so tag-slice counts
-are not mutually exclusive.
-
-The recorded-run CLI supports the same analysis without making provider calls:
-
-```bash
-ai-eval slices candidate.json --by risk_category --min-cases 30
-ai-eval slices candidate.json --by metadata.locale --exclude-missing
-```
-
-These summaries are descriptive diagnostics, not statistical significance tests. A small slice is
-not evidence of safety or quality; inspect the count and use a suitable inferential method before
-making comparative claims. Since selected metadata values are included in output summaries, do not
-slice on confidential or directly identifying metadata.
-
-## Promptfoo adapter
-
-Promptfoo v3 exports can be imported directly from the JSON file produced by
-`promptfoo eval -o results.json`. The adapter normalizes one provider/prompt combination into an
-`EvaluationRun`, preserving case variables and assertions, pass/fail score, grader reason,
-latency, cost, named scores, and available error/trace identifiers.
-
-```python
-from ai_eval_engineering import load_promptfoo_json
-
-run = load_promptfoo_json(
-    "results.json",
-    system_name="support-assistant",
-    system_version="git:9f3ab21",
-    suite_version="support-suite-v2",
-    provider_id="openai:chat:example-model",
-    prompt_idx=0,
-)
-
-print(run.manifest.run_id)
-print(len(run.cases))
-```
-
-The system and suite versions are supplied by the caller so the release gate can compare the
-intended revisions. Promptfoo exports that contain multiple providers or prompt indices must be
-sliced explicitly with `provider_id` and/or `prompt_idx`; the adapter refuses ambiguous mixes.
-For provider/runtime error rows without a model response, it retains the failed case with a null
-output and the error reason rather than dropping it.
-
-The initial adapter targets the documented Promptfoo v3 JSON envelope
-(`results.version == 3`, with result rows in `results.results`). It does not yet import JSONL,
-CSV, JUnit XML, Promptfoo v2 files, or red-team-specific exports. See the
-[Promptfoo JSON output format](https://www.promptfoo.dev/docs/configuration/outputs/) and
-[Promptfoo CI/CD JSON schema](https://www.promptfoo.dev/docs/integrations/ci-cd/) for the source
-format.
-
-Promptfoo JSON exports may contain raw model output, prompts, variables, configuration, and
-other sensitive data. Review the source file and protect imported artifacts before committing or
-sharing them.
-
-## Promptfoo baseline vs candidate workflow
-
-`examples/promptfoo_release_workflow.py` joins the Promptfoo adapter to both existing
-comparison APIs: `evaluate_release_candidate` makes a paired-bootstrap release decision, and
-`compare_failure_runs` identifies newly failing, resolved, and persistent case/grader pairs.
-
-Run the deterministic CI demonstration:
-
-```bash
-python examples/promptfoo_release_workflow.py
-```
-
-The committed baseline/candidate files are **synthetic Promptfoo-v3-shaped fixtures**, not results
-captured from a real model provider. They demonstrate a known regression so the tests can verify
-that the release gate returns `FAIL` and that the failure delta reports 11 new, 2 resolved, and
-4 persistent failures. No network or model calls occur.
-
-To compare your own Promptfoo v3 exports:
-
-```bash
-python examples/promptfoo_release_workflow.py baseline.json candidate.json \
-  --system-name support-assistant \
-  --baseline-version git:abc123 \
-  --candidate-version git:def456 \
-  --suite-version support-suite-v2 \
-  --provider-id 'openai:chat:example-model' \
-  --prompt-idx 0 \
-  --min-cases 30 \
-  --max-allowed-regression 0.02 \
-  --enforce-gate
-```
-
-The same `suite-version` must describe the same case definitions in both files. Choose the
-`system-version` values yourself; provider and prompt identifiers are not sufficient to identify
-a deployment revision. The release metric named `promptfoo` uses the row-level Promptfoo
-`score`; named scores remain preserved in grader metadata and are not automatically registered as
-separate release metrics.
-
-By default, the example prints the decision without rejecting a candidate solely because the
-decision is `FAIL` or `INCONCLUSIVE`. Add `--enforce-gate` in a CI/CD invocation to return
-exit code 1 for those decisions. Invalid evidence or incompatible runs return exit code 2.
-Without `--enforce-gate`, a valid `FAIL` or `INCONCLUSIVE` decision is printed but does not
-reject the command; `INVALID_EVIDENCE` still returns exit code 2.
-
-Example output from the committed synthetic fixtures (numeric values are deterministic for the
-configured seed and bootstrap settings):
-
-```text
-Baseline:  model-v1 | 30 cases
-Candidate: model-v2 | 30 cases
-
-Release decision: FAIL
-promptfoo: baseline=0.8000, candidate=0.5000, delta=-0.3000
-95% CI=[-0.5000, -0.1000], n=30
-
-failure delta: 11 new, 2 resolved, 4 persistent
-```
-
-The example scores and failure counts demonstrate plumbing and regression detection only; they are
-not measured model performance. Review raw prompts, test variables, expected answers, outputs,
-and generated reports for sensitive information before sharing exported files or reports.
-
-## External evaluation result interchange
-
-External tools can import their completed evaluations through a small, versioned JSON contract.
-Map the tool's run metadata, test cases, observed outputs, and grader results into schema version
-`1`; the importer validates IDs, required fields, numeric values, and JSON-compatible metadata
-before constructing the same `EvaluationRun` objects used by the rest of this package.
-
-```python
-from ai_eval_engineering import load_run_json, write_run_json
-
-# A normalized interchange file exported by an external evaluator:
-candidate = load_run_json("external-results/candidate-run.json")
-
-# Save a validated, canonical copy that another tool can consume:
-write_run_json(candidate, "normalized/candidate-run.json")
-print(candidate.manifest.system_version, len(candidate.cases))
-```
-
-The JSON envelope contains `schema_version`, `manifest`, and `cases`. Each case result contains a
-`case` object, an `output` object, and a non-empty `graders` array. Case IDs and grader names
-must be unique within their required scope; each output's case ID must match its case. Scores must
-be finite numbers, and latency/cost must be finite and non-negative. Nested metadata and outputs
-must contain JSON values only.
-
-The versioned JSON Schema ships inside the installed wheel and can be loaded by consumers that
-need to validate their own export files before handing them to the importer:
-
-```python
-from ai_eval_engineering import get_external_run_schema
-
-schema = get_external_run_schema()
-print(schema["$schema"])
-print(schema["properties"]["schema_version"]["const"])
-```
-
-This is a provider-neutral interchange format, not a built-in SDK for a particular vendor. The
-external tool or a small tool-specific adapter remains responsible for mapping its fields into the
-documented envelope. Unknown schema versions fail explicitly instead of being guessed.
-
-## Agent and security evaluation
-
-V1.1 adds a typed trajectory schema with replay validation and separate task-success, step-success, safety, and efficiency signals.
-
-The committed `data/adversarial.json` suite is intentionally compact and human-readable. It demonstrates how risk-tagged cases become executable regression tests.
-
-The security fixtures are not a comprehensive security benchmark and make no production assurance claim.
+See [Limitations](docs/limitations.md) for the precise semantics of incomplete usage evidence, in-flight work, and cost reporting.
 
 ## Failure-aware execution reports
 
-The ordinary `run()` methods remain fail-fast. Use `run_report()` when a batch should continue
-after an individual adapter, output-validation, or grader failure and record each outcome without
-turning failures into artificial zero scores.
+The ordinary `run()` methods remain fail-fast. Use `run_report()` when a batch should continue after an individual adapter, output-validation, or grader failure and record each outcome without turning the failure into an artificial zero score.
 
-```python
+~~~python
 report = runner.run_report(
     suite,
     manifest,
@@ -765,65 +368,103 @@ for item in report.cases:
     if not item.completed:
         stage = item.failure.stage if item.failure is not None else "unknown"
         print(item.case.id, item.status, stage)
-```
+~~~
 
-A report preserves original suite order and can retain a validated system output plus earlier valid
-grader results when a later grader fails. Only fully completed cases are checkpointed, so failed
-cases can be attempted again when resuming. Async cancellation and checkpoint I/O errors still
-propagate instead of being misreported as ordinary per-case outcomes.
+Reports preserve original suite order and can retain a validated system output plus earlier valid grader results when a later grader fails. Only fully completed cases are checkpointed, so failed cases can be attempted again when resuming. Cancellation and checkpoint I/O failures propagate instead of being recorded as ordinary per-case outcomes.
 
-A partial report cannot be converted to `EvaluationRun`, preventing incomplete evidence from
-silently entering release-gate comparisons. Exception messages can include provider details or user
-data; review and redact reports before storing or sharing them.
+A partial execution report cannot be converted into an ordinary `EvaluationRun`. This prevents missing evaluation evidence from silently entering release-gate comparisons. Exception messages can include provider details or user data; review and redact reports before storing or sharing them.
 
-## Failure delta between versions
+## Comparisons and release policies
 
-After collecting failures from two runs, `compare_failure_runs` classifies them as new,
-resolved, or persistent. It refuses comparisons across suite versions, changed test definitions,
-changed case IDs, or different grader sets, so removing a grader cannot masquerade as fixing its
-failures.
+### Paired release evaluation
 
-```python
-from ai_eval_engineering import compare_failure_runs
+`evaluate_release_candidate()` compares recorded baseline and candidate runs on matching case IDs and case definitions. It evaluates configured numeric grader metrics and calculates paired-bootstrap confidence intervals, rather than treating matched cases as independent samples.
 
-delta = compare_failure_runs(baseline_run, candidate_run)
-print(delta.summary())
-print("New regressions:", delta.new_failure_count)
-print("Resolved:", delta.resolved_failure_count)
-print("Still failing:", delta.persistent_failure_count)
+~~~python
+from ai_eval_engineering import ReleaseMetricPolicy, evaluate_release_candidate
 
-for failure in delta.new_failures:
-    print(failure.case.id, failure.grader, failure.latest_details)
+decision = evaluate_release_candidate(
+    baseline_run,
+    candidate_run,
+    [
+        ReleaseMetricPolicy(
+            "task_success",
+            direction="higher_is_better",
+            max_allowed_regression=0.01,
+            min_cases=30,
+        ),
+        ReleaseMetricPolicy(
+            "latency_ms",
+            direction="lower_is_better",
+            max_allowed_regression=25.0,
+            min_cases=30,
+        ),
+    ],
+    confidence=0.95,
+    resamples=2000,
+    seed=7,
+)
 
-for failure in delta.persistent_failures:
-    print(
-        failure.candidate.case.id,
-        failure.candidate.grader,
-        failure.score_delta,  # raw candidate score minus baseline score
-    )
-```
+print(decision.status)  # PASS / FAIL / INCONCLUSIVE / INVALID_EVIDENCE
+print(decision.summary())
+~~~
 
-A persistent failure's score delta is descriptive only; whether a score increase is an improvement
-depends on the grader's definition. A failure is classified as resolved only when the corresponding
-grader ran and passed in the candidate. Both runs must use the same system name, suite version,
-case definitions, and per-case grader set.
+A `PASS` means every configured metric's interval satisfies its allowed-regression tolerance on the evaluated cases. `FAIL` means at least one metric is beyond its tolerance; `INCONCLUSIVE` indicates unresolved uncertainty or insufficient sample size; `INVALID_EVIDENCE` means the runs cannot be compared safely.
 
-## OpenAI-compatible LLM judge
+For multiple metrics, the release gate applies a Bonferroni adjustment to the requested confidence level. Bootstrap intervals remain approximate, and a passing result is not a production-wide quality guarantee, formal power analysis, or proof of causal impact.
 
-The core package now includes an optional, real model-backed judge adapter. It uses the OpenAI
-Python SDK with Chat Completions Structured Outputs, validates every returned field against the
-rubric, and records provider/model/request/token-usage metadata without storing the raw API
-response. The base installation remains dependency-free; install the optional SDK extra when
-you need a live provider call.
+### Reproducible multi-metric policies
 
-```bash
-pip install "ai-evaluation-engineering[openai]"
-```
+A versioned `release-policy-v1` file stores metric names, directions, regression tolerances, minimum case counts, confidence, bootstrap resamples, and a seed. The `ai-eval compare --policy` mode applies the policy without ad-hoc CLI overrides and includes the policy payload in its JSON decision for traceability.
 
-Set `OPENAI_API_KEY` in your environment, then use the judge directly or wrap it as a grader for
-`EvaluationRunner`:
+The repository includes an example policy: [quality, latency, and safety](examples/policies/quality-latency-safety-v1.json).
 
-```python
+### Failure-delta triage
+
+`compare_failure_runs()` classifies failures between two compatible runs as new, resolved, or persistent. It rejects comparisons where the suite version, case definitions, case IDs, or per-case grader sets differ. A failure is resolved only when the corresponding grader ran and passed in the candidate.
+
+### Offline slice analysis
+
+`analyze_run_slices()` and `ai-eval slices` summarize results by case tags, risk categories, or a caller-selected scalar field in case metadata. Results include case counts and per-grader breakdowns so an overall score does not completely hide a concentrated failure pattern.
+
+Slice summaries are descriptive. They do not automatically provide subgroup confidence intervals, correct for multiple comparisons across slices, or establish fairness. Tag slices may overlap, and metadata may contain sensitive values.
+
+## Command-line interface
+
+The `ai-eval` CLI works with recorded JSON files and does not make provider calls.
+
+~~~bash
+# Inspect commands
+ai-eval --help
+
+# Print versioned schemas
+ai-eval schema
+ai-eval suite-schema
+ai-eval release-policy-schema
+
+# Validate stored evidence
+ai-eval validate-run external-results/candidate-run.json
+ai-eval validate-suite examples/suites/support-smoke-v1.json
+
+# Compare one numeric metric
+ai-eval compare baseline.json candidate.json   --metric quality   --direction higher_is_better   --max-allowed-regression 0.02   --min-cases 30
+
+# Compare multiple metrics using a versioned policy
+ai-eval compare baseline.json candidate.json   --policy examples/policies/quality-latency-safety-v1.json
+
+# Assess recorded cost, tokens, and latency
+ai-eval budget candidate.json   --max-total-cost-usd 2.50   --max-total-tokens 50000   --max-case-latency-ms 15000
+~~~
+
+The CLI emits machine-readable JSON for decision commands. `compare` returns exit code `0` only for `PASS`; `FAIL`, `INCONCLUSIVE`, and `INVALID_EVIDENCE` return `1`. The `budget` command returns `1` when the budget is exceeded or its evidence is incomplete or invalid. Invalid input or configuration returns `2`.
+
+For exact arguments and option defaults, use `ai-eval --help`.
+
+## LLM-as-a-judge
+
+The optional OpenAI-compatible judge uses the OpenAI Python SDK and Chat Completions Structured Outputs to request rubric-constrained results. The judge can be used directly or wrapped as a grader for an evaluation runner. The async variant supports native asynchronous execution.
+
+~~~python
 from ai_eval_engineering import (
     EvaluationRubric,
     OpenAICompatibleJudge,
@@ -852,299 +493,95 @@ grader = OpenAIJudgeGrader(
     pass_labels=("pass", "passed"),
 )
 
-# case and output are EvaluationCase and SystemOutput instances
 result = grader.grade(case, output)
-print(result.passed, result.score, result.details)
-print(result.metadata.get("usage"))
-```
-
-The grader does not infer success from a high score alone: `passed` is true only when the label
-matches the explicitly configured `pass_labels`. The numeric score is retained separately for
-analysis and release gates. The adapter requires an endpoint/model that supports JSON Schema
-Structured Outputs; a custom OpenAI-compatible endpoint can be supplied via `base_url` or an
-injected client. See the [OpenAI Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat).
-
-Live judge calls send the case input, expected value, model output, and trace to the configured
-provider and can incur API charges. Review those fields for sensitive data. CI tests use an
-injected fake client and make no provider calls, so a green test suite validates integration
-mechanics, not the quality of a particular model judge.
-
-## Judge calibration
-
-A judge that agrees with a majority class can still miss a minority class. `calibrate_judge`
-therefore reports per-label precision/recall/F1 in addition to raw agreement, balanced accuracy,
-macro metrics, a confusion matrix, and Cohen's kappa. Input maps must cover exactly the unique
-calibration case IDs; malformed or duplicate inputs fail explicitly rather than being silently
-ignored.
-
-```python
-from ai_eval_engineering import (
-    EvaluationRubric,
-    FakeJudge,
-    RubricDimension,
-    calibrate_judge,
-)
-
-cases = [case_a, case_b, case_c]
-outputs = {case.id: output_by_id[case.id] for case in cases}
-human_labels = {"case-a": "pass", "case-b": "fail", "case-c": "pass"}
-
-report = calibrate_judge(
-    cases,
-    FakeJudge({"case-a": ("pass", 0.9), "case-b": ("pass", 0.8), "case-c": ("pass", 0.95)}),
-    outputs,
-    human_labels,
-    EvaluationRubric(
-        "answer-quality",
-        (RubricDimension("correctness", "Matches the verified expected answer"),),
-    ),
-)
-
-print(report.agreement_rate)
-print(report.balanced_accuracy)
-print(report.per_label_metrics["fail"].recall)
-print(report.cohen_kappa)
-```
-
-Undefined precision is represented as `None` when a label is never predicted; macro precision
-treats that undefined value as zero for reference labels. Cohen's kappa is `None` when its
-expected-agreement denominator is zero. Calibration metrics measure agreement with the supplied
-human labels—they do not establish that those labels are correct or that a judge is fair on
-unobserved populations.
-
-## Failure-to-regression memory
-
-A failed grader/case pair can be captured as a stable regression-memory record, merged across
-runs, saved to JSONL, and rebuilt into a small regression suite. Repeated failures keep their
-history by run ID; the record identity remains stable across system versions when the versioned
-suite, test definition, and grader name remain unchanged.
-
-```python
-from pathlib import Path
-
-from ai_eval_engineering import (
-    build_failure_regression_suite,
-    extract_failure_records,
-    merge_failure_memory,
-    read_failure_memory,
-    write_failure_memory,
-)
-
-memory_path = Path("failure-memory.jsonl")
-existing = read_failure_memory(memory_path) if memory_path.exists() else ()
-observed = extract_failure_records(completed_run)
-memory = merge_failure_memory(existing, observed)
-write_failure_memory(memory, memory_path)
-
-regression_suite = build_failure_regression_suite(
-    memory,
-    version="regression-v1",
-)
-print(f"Known failure records: {len(memory)}")
-print(f"Unique regression cases: {len(regression_suite.cases)}")
-```
-
-The JSONL record stores the case input, expected value, metadata, grader score/details, and
-run history, but deliberately omits the observed model output by default. Input prompts, expected
-values, metadata, and grader details can still contain sensitive information; inspect or redact
-them before writing the memory file. The generated suite deduplicates identical cases and rejects
-conflicting definitions that reuse the same case ID.
-
-## Decision-grade release evaluation
-
-Use `evaluate_release_candidate` when you need more than a threshold-only regression check.
-It compares recorded baseline and candidate runs on the same versioned suite, requires the same
-case IDs and case definitions, aligns each grader score by case ID, and uses a paired bootstrap
-interval to avoid treating matched cases as independent samples.
-
-```python
-from ai_eval_engineering import ReleaseMetricPolicy, evaluate_release_candidate
-
-decision = evaluate_release_candidate(
-    baseline_run,
-    candidate_run,
-    [
-        ReleaseMetricPolicy(
-            "task_success",
-            direction="higher_is_better",
-            max_allowed_regression=0.01,
-            min_cases=30,
-        ),
-        ReleaseMetricPolicy(
-            "latency_ms",
-            direction="lower_is_better",
-            max_allowed_regression=25.0,
-            min_cases=30,
-        ),
-    ],
-    confidence=0.95,
-    resamples=2000,
-    seed=7,
-)
-
-print(decision.status)  # PASS / FAIL / INCONCLUSIVE / INVALID_EVIDENCE
-print(decision.summary())
-```
-
-The release status is conservative: `PASS` means every configured metric's paired-bootstrap
-interval stays within its allowed-regression tolerance on these evaluated cases; `FAIL` means
-at least one metric's interval is beyond its tolerance; `INCONCLUSIVE` means the result overlaps
-a tolerance boundary or the configured minimum case count is not met; `INVALID_EVIDENCE` means
-the runs could not be compared safely (for example, a suite/version mismatch, changed case inputs,
-unmatched case IDs, or missing metric results).
-
-When several metric policies are evaluated together, the engine applies a Bonferroni adjustment to the requested confidence level across those metrics. This is conservative; because the intervals use a percentile bootstrap, coverage remains approximate rather than a formal guarantee.
-
-A `PASS` is not a production-wide quality guarantee, a formal power analysis, or proof of causal
-impact. It depends on the supplied evaluation cases, score semantics, confidence level, and
-paired-bootstrap assumptions. The metric name must identify a numeric grader score recorded for
-every case in both runs.
-
-## Direction-aware regression gates
-
-Release-gate rules can explicitly state whether a metric should increase or decrease. The default
-`higher_is_better` direction preserves the existing API behavior for metrics such as task success
-or quality scores; use `lower_is_better` for metrics such as cost, latency, or failure rate.
-
-```python
-from ai_eval_engineering.regression import (
-    BaselineRecord,
-    RegressionRule,
-    evaluate_gate,
-)
-
-baseline = BaselineRecord(
-    suite_version="suite-v1",
-    system_version="model-v1",
-    metrics={"task_success": 0.91, "latency_ms": 420.0},
-)
-
-result = evaluate_gate(
-    baseline,
-    {"task_success": 0.90, "latency_ms": 390.0},
-    [
-        RegressionRule("task_success", max_allowed_drop=0.02),
-        RegressionRule(
-            "latency_ms",
-            max_allowed_drop=50.0,
-            direction="lower_is_better",
-        ),
-    ],
-)
-assert result.passed
-```
-
-Metric values and regression tolerances must be finite numbers; tolerances must be non-negative.
-This gate checks the configured metric thresholds only. It does **not** establish statistical
-significance, verify that the current run used the same suite version, or prove overall production
-quality. Those concerns require a decision-grade release policy with explicit run metadata and
-uncertainty analysis.
-
-## Online evaluation
-
-The online layer keeps exposure, outcome, variant, and segment identifiers separate. It provides a vendor-neutral A/B adapter, segment-level comparisons, and evidence guardrails that surface insufficient evidence instead of forcing a conclusion.
-
-Run the deterministic example with `python examples/online_experiment.py`.
-
-## Trade-off analysis
-
-Evaluation runs already carry cost and latency at the `SystemOutput` level. `TradeoffObservation` exposes non-dominated quality/cost and quality/latency views.
-
-The framework reports trade-offs rather than automatically selecting a single preferred system.
-
-The online evidence assessment checks configured data-integrity rules and minimum sample counts. A `sufficient` state does not prove statistical power, causal validity, or practical significance. Comparisons with fewer than two observations in either group retain their descriptive difference but do not report a bootstrap confidence interval; the interval is `None`, not zero uncertainty.
-
-
-## Integration boundary
-
-The repository includes provider-neutral adapters for:
-
-- [Building Software With LLMs](https://github.com/peymanpro/Building-Software-With-LLMs);
-- [Evidence-Grounded-RAG](https://github.com/peymanpro/Evidence-Grounded-RAG);
-- [How Agents Work](https://github.com/peymanpro/How-Agents-Work).
-
-These are **contract-level integrations** built from deterministic snapshots of documented behavior, not claims of live-process or network integration. This keeps the evaluation package network-independent and reproducible while making interface expectations testable. The adapters can later be replaced with live-process adapters when a real runtime is available.
-## Model adaptation and evaluation
-
-[Pretrained LLM Adaptation](https://github.com/peymanpro/Pretrained-LLM-Adaptation) is a complementary project focused on a reproducible LoRA/PEFT training and evaluation workflow. This repository focuses on reusable evaluation contracts, graders, statistical comparisons, and regression gates.
-
-The distinction matters:
-
-~~~text
-Pretrained model + dataset
-          ↓
-training / adaptation
-          ↓
-held-out metrics + predictions
-          ↓
-versioned evaluation cases and graders
-          ↓
-comparison / regression decision
+print(result.passed, result.score, result.metadata.get("usage"))
 ~~~
 
-The repositories are independently runnable. This evaluation framework does **not** automatically launch the adaptation benchmark, and a training-time score by itself is not a substitute for a separately versioned evaluation suite.
-## Evidence policy
+Set `OPENAI_API_KEY` in the environment before making live calls. The adapter requires a model or endpoint that supports JSON Schema Structured Outputs; a custom OpenAI-compatible endpoint can be supplied through `base_url` or an injected client.
 
-This repository does not treat a small synthetic, deterministic, or contract-snapshot benchmark as a production quality claim.
+The pass flag is controlled by the explicitly configured `pass_labels`; it is not inferred from a high numeric score. Live judge calls can incur charges and send the case input, expected value, model output, and trace to the configured provider. Review that data for sensitive information. The CI suite uses deterministic fixtures and fake clients; it does not validate the quality of a particular live judge model.
 
-Every reported evaluation should identify:
+The [OpenAI Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat) describes the provider-side response format.
 
-- dataset or suite version;
-- system or model version;
-- configuration;
-- seed when meaningful;
-- environment;
-- metric definition;
-- uncertainty where applicable;
-- known limitations.
+### Judge calibration
 
-## Current scope boundary
+`calibrate_judge()` compares model-judge labels with supplied human labels and reports per-label precision, recall, F1, balanced accuracy, macro metrics, a confusion matrix, and Cohen's kappa. A judge is an evaluator, not ground truth; calibration results depend on the supplied sample and label definitions.
 
-This repository provides offline evaluation, deterministic comparison, release-gate logic, failure
-deltas, and vendor-neutral Promptfoo result import. It also includes online-evaluation primitives
-and examples, but it is not a deployed experimentation platform. Live cloud-provider integrations
-and production analytics adapters remain outside the current scope. The Promptfoo CI demonstration
-uses synthetic fixtures; real provider output is only evaluated when the caller supplies real JSON
-exports.
+## Agent, security, online, and trade-off evaluation
 
-See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, `docs/capability-roadmap.md`, and `docs/V1.1-CLOSURE.md`.
+### Agent trajectories and security regressions
 
-## Install from PyPI
+The `Trajectory` model validates ordered agent events so task-level success can be analyzed separately from step success, safety, and efficiency. Risk-tagged adversarial cases can be run through the same evaluation pipeline as ordinary cases.
 
-**PyPI publication is intentionally deferred until the library's capabilities are complete.** The current `v0.2.0` is available as a GitHub Release, but do not assume the PyPI package is installable yet. When the package is published at the end of feature development, the normal installation will be:
+The committed security fixtures demonstrate regression mechanics; they are intentionally small and are not a comprehensive security benchmark.
 
-```bash
-pip install ai-evaluation-engineering
-```
+### Online-evaluation primitives
 
-For the optional live OpenAI-compatible judge, install its extra:
+The package includes typed exposure and outcome records, metric contracts, A/B comparison utilities, and evidence guardrails for concerns such as missing outcomes, small samples, overlapping assignments, missing ground truth, and selection bias. These are building blocks—not a deployed experimentation service or production analytics integration.
 
-```bash
-pip install "ai-evaluation-engineering[openai]"
-```
+A/B variants are treated as independent samples rather than paired observations when the experiment design assigns different users to different variants.
 
-If the package has not yet been published on PyPI, the release workflow or trusted-publisher setup is still pending; do not assume a successful GitHub Release alone means a PyPI upload succeeded.
+### Quality/cost and quality/latency trade-offs
 
-## Automated releases and PyPI publishing
+Recorded cost and latency can be combined with quality observations to identify non-dominated trade-off frontiers. The library exposes the trade-off; it does not automatically decide which system is best. That choice depends on the application's constraints and priorities.
 
-The release workflow validates the source, runs the test suite, Ruff, mypy, and the project's core,
-online-evaluation, security-regression, trade-off, integration-contract, and Promptfoo baseline/candidate
-demonstrations. It then builds and validates the wheel and source distribution, smoke-tests the built
-wheel, and attaches the validated distributions to the GitHub Release.
+## Integrations
 
-**PyPI publishing is deliberately disabled for normal pushes, tag pushes, and automatic release runs.**
-This project is still in feature development; a successful CI run or GitHub Release does not publish
-the package to PyPI. When the feature set is ready, an authorized maintainer must manually run the
-`Release` workflow from `main` and explicitly set `publish_pypi=true` with the matching
-`version`. The workflow then validates the versioned source and publishes the corresponding
-validated distributions using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/);
-no long-lived PyPI token is stored by the workflow.
+The repository contains contract-level adapters for three related projects:
 
-Before that final publication, configure a Trusted Publisher (or a pending publisher if the project
-does not yet exist) in the PyPI account. Use owner `peymanpro`, repository
-`AI-Evaluation-Engineering`, workflow file `.github/workflows/release.yml`, and GitHub environment
-`pypi`. See the [PyPI setup guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
-This account-level configuration is intentionally separate from feature development.
+- [Building Software With LLMs](https://github.com/peymanpro/Building-Software-With-LLMs)
+- [Evidence-Grounded-RAG](https://github.com/peymanpro/Evidence-Grounded-RAG)
+- [How Agents Work](https://github.com/peymanpro/How-Agents-Work)
 
-Existing version tags are never overwritten. CI uses synthetic Promptfoo fixtures and makes no paid
-model calls. A GitHub Release is not evidence that the package has been published on PyPI.
+The integrations use deterministic snapshots of documented behavior to verify adapter compatibility without importing those projects as runtime dependencies or launching their live processes in CI.
+
+[Pretrained LLM Adaptation](https://github.com/peymanpro/Pretrained-LLM-Adaptation) is complementary: that project focuses on reproducible model adaptation and training evaluation, while this library focuses on reusable evaluation contracts, grading, statistical comparison, and release decisions. The evaluation framework does not automatically launch the adaptation benchmark.
+
+## Evidence and methodology
+
+Case-level observations are preserved before aggregation. A completed run can be exported as a machine-readable record or materialized into an evidence package using `write_evidence_package()`.
+
+For implementation details, rationale, and documented boundaries, see:
+
+- [Architecture](docs/architecture.md)
+- [Evaluation methodology](docs/methodology.md)
+- [Limitations and non-goals](docs/limitations.md)
+- [Capability roadmap](docs/capability-roadmap.md)
+- [V1.1 closure and evidence boundary](docs/V1.1-CLOSURE.md)
+- [Changelog](CHANGELOG.md)
+
+A useful evaluation record should identify its suite version, system version, configuration, seed when meaningful, environment, metric definitions, and uncertainty where applicable. A score without that context is difficult to reproduce or interpret.
+
+## Limitations and non-goals
+
+- **Fixtures are not production benchmarks.** Synthetic adapters and deterministic contract snapshots establish reproducible behavior of the examples, not the quality of a deployed model.
+- **An LLM judge is not ground truth.** Use representative human labels and calibration when judge quality matters.
+- **Budget controls have different guarantees.** Post-run assessment cannot stop a request; an observed-usage guard may react only after work has already incurred cost; reservation-based execution depends on adapter and grader enforcement. Use provider-side limits when available.
+- **Slice analysis is descriptive.** It does not automatically establish subgroup significance or fairness and does not correct for multiple comparisons across slices.
+- **Regex is not a sandbox.** Python's regular-expression engine has no built-in execution deadline; use trusted patterns.
+- **Security coverage is limited.** The included adversarial taxonomy and fixtures are useful regression seeds, not comprehensive assurance.
+- **Online primitives are not a hosted experimentation platform.** Live analytics and production experiment infrastructure remain outside the current scope.
+- **External integrations are contract-level.** CI checks documented adapter behavior using deterministic snapshots rather than running each sibling application live.
+
+See [docs/limitations.md](docs/limitations.md) for detailed behavior and caveats.
+
+## Development
+
+Install the development dependencies and run the same quality checks used in CI:
+
+~~~bash
+python -m pip install -e ".[dev]"
+pytest
+ruff check .
+mypy src
+~~~
+
+The examples use synthetic or deterministic fixtures unless stated otherwise. CI includes schema checks, CLI checks, and examples for budget control, online-evaluation primitives, security regressions, trade-offs, integrations, Promptfoo interchange, asynchronous evaluation, deterministic graders, retries, structured/composite graders, and failure-aware reports. CI does not need a provider API key and makes no paid model calls.
+
+Generated `artifacts/` files are ignored by Git. Do not commit run outputs that contain customer data, prompts, model outputs, traces, or other sensitive evaluation material.
+
+## Release status
+
+The project has a GitHub release, but **PyPI publication is intentionally deferred during feature development**. A GitHub Release or successful CI run does not mean a package was uploaded to PyPI. The repository's release workflow validates the source and built distributions; publishing to PyPI requires an explicit authorized workflow dispatch with `publish_pypi=true` and a correctly configured PyPI Trusted Publisher.
+
+Until PyPI publication is explicitly announced, use the source-install instructions above.
