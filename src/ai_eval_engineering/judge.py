@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -28,6 +29,7 @@ class JudgeResult:
     score: float
     rationale: str
     dimension_scores: JsonObject
+    metadata: JsonObject = field(default_factory=dict)
 
 
 class Judge(Protocol):
@@ -62,6 +64,12 @@ def validate_judge_result(result: JudgeResult, rubric: EvaluationRubric) -> None
         raise ValueError("Judge score must be finite and within [0, 1].")
     if not isinstance(result.dimension_scores, dict):
         raise TypeError("Judge dimension_scores must be a dictionary.")
+    if not isinstance(result.metadata, dict):
+        raise TypeError("Judge metadata must be a dictionary.")
+    try:
+        json.dumps(result.metadata, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Judge metadata must contain JSON-compatible values.") from exc
 
     required = {dimension.name for dimension in rubric.dimensions}
     if set(result.dimension_scores) != required:
