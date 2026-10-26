@@ -434,10 +434,55 @@ If required usage evidence is missing or malformed, it stops scheduling further 
 assuming zero usage. Token usage becomes known after grading, so the current case's grader calls may
 already have incurred cost.
 
-The asynchronous guarded runner starts cases in batches up to `max_concurrency` and waits for every
-case in a batch to finish before scheduling another batch. The request(s) already in flight when a
-limit is crossed can still push spend beyond it. This is **not a hard spend cap**; use provider-side
-spend limits as the final protection against unexpected charges.
+The asynchronous observed-budget runner starts cases in batches up to `max_concurrency` and waits
+for every case in the current batch to finish before scheduling another batch. Because ordinary adapters
+may not declare an enforceable per-request ceiling, this mode remains an observed-usage guard rather than
+a hard admission-control contract.
+
+### Reserved budget execution
+
+For components that can enforce an explicit request cost ceiling, use the stricter
+`run_reserved_budgeted` path:
+
+```python
+from ai_eval_engineering import ReservedBudgetPolicy
+
+result = runner.run_reserved_budgeted(
+    suite,
+    manifest,
+    policy=ReservedBudgetPolicy(
+        max_total_cost_usd=2.50,
+        max_case_cost_usd=0.50,
+    ),
+)
+print(result.status)
+print(result.known_cost_usd)
+print(result.reserved_cost_usd)
+print(result.pending_case_ids)
+```
+
+This strict mode requires the system adapter to implement
+`run_with_budget(case, *, max_cost_usd)`. It must enforce the supplied ceiling *before* submitting
+provider requests and return the actual aggregate cost in `SystemOutput.cost_usd`. A component that can
+quote a request but knows it cannot fit the allowance should raise `RequestBudgetExceeded` before
+sending it. A billable grader must similarly implement
+`grade_with_budget(case, output, *, max_cost_usd)` and report its aggregate actual cost in
+`GraderResult.metadata["cost_usd"]`. Deterministic graders built into the package explicitly declare
+`budget_cost_free = True`; custom graders may use that marker only when they truly make no billable
+calls. Strict mode rejects an unbounded component before any case starts and disables retries.
+
+The run reserves each case's maximum before starting it, including all grader calls. The asynchronous
+runner reserves every case in a batch before launching any of them; the known spend plus outstanding
+reservations therefore stays within the configured total **provided every budget-aware component honors
+its per-call ceiling**. If a component reports charges above its allowance, the result is
+`REQUEST_CAP_VIOLATED`; already incurred charges cannot be undone. If a component returns no cost
+measurement, its remaining reservation is retained and no new cases are admitted.
+
+This contract cannot force an arbitrary adapter or external billing platform to obey a ceiling. For an
+actual provider, the adapter must translate the allowance into enforceable request constraints or refuse
+the call. Also configure provider/organization hard spend limits as a second line of defense: provider
+billing enforcement may be delayed, so no client library can promise an exact universal dollar ceiling
+when the underlying provider itself allows accounting overshoot.
 
 ## Offline slice analysis
 
