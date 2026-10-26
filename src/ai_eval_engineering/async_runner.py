@@ -20,6 +20,12 @@ from .budget import (
 )
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
+from .execution_report import (
+    CaseExecutionResult,
+    EvaluationExecutionReport,
+    failure_result,
+    validate_execution_report,
+)
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -596,3 +602,148 @@ class AsyncEvaluationRunner:
             stop_reason=controller.stop_reason,
         )
 
+    async def run_report(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        checkpoint_path: str | Path | None = None,
+    ) -> EvaluationExecutionReport:
+        """Evaluate all cases and capture failures as explicit per-case outcomes.
+
+        A system or grader failure does not cancel unrelated cases. Cancellation
+        and checkpoint I/O errors still propagate. Only fully completed cases are
+        saved to the resumable checkpoint; failed cases will be retried on resume.
+        """
+        validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
+        results: list[CaseExecutionResult | None] = [None] * len(suite.cases)
+        for index, case in enumerate(suite.cases):
+            saved = completed.get(case.id)
+            if saved is not None:
+                results[index] = CaseExecutionResult(
+                    case=case,
+                    status="completed",
+                    output=saved.output,
+                    graders=saved.graders,
+                )
+
+        cases = iter(
+            (index, case)
+            for index, case in enumerate(suite.cases)
+            if case.id not in completed
+        )
+        checkpoint_lock = asyncio.Lock()
+
+        async def worker() -> None:
+            while True:
+                try:
+                    index, case = next(cases)
+                except StopIteration:
+                    return
+
+                try:
+                    output = await self._run_adapter(case)
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                    results[index] = failure_result(case, "adapter_error", exc)
+                    continue
+
+                try:
+                    validate_system_output(case, output)
+                except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                    results[index] = failure_result(
+                        case, "output_validation_error", exc
+                    )
+                    continue
+
+                graded: list[GraderResult] = []
+                failure_record: CaseExecutionResult | None = None
+                for grader in self._graders:
+                    try:
+                        grader_result = grader.grade(case, output)
+                        if inspect.isawaitable(grader_result):
+                            grader_result = await cast(
+                                Awaitable[GraderResult], grader_result
+                            )
+                    except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                        failure_record = failure_result(
+                            case,
+                            "grader_error",
+                            exc,
+                            output=output,
+                            graders=tuple(graded),
+                        )
+                        break
+
+                    try:
+                        if not isinstance(grader_result, GraderResult):
+                            raise TypeError(
+                                "Graders must return GraderResult instances."
+                            )
+                        validate_grader_results((grader_result,), case.id)
+                        if any(
+                            previous.grader == grader_result.grader
+                            for previous in graded
+                        ):
+                            raise ValueError(
+                                f"Duplicate grader name {grader_result.grader!r} "
+                                f"for case {case.id!r}."
+                            )
+                    except Exception as exc:  # noqa: BLE001 - adapter and grader exceptions are per-case outcomes
+                        failure_record = failure_result(
+                            case,
+                            "grader_contract_error",
+                            exc,
+                            output=output,
+                            graders=tuple(graded),
+                        )
+                        break
+                    graded.append(grader_result)
+
+                if failure_record is not None:
+                    results[index] = failure_record
+                    continue
+
+                graders = tuple(graded)
+                case_result = CaseResult(case=case, output=output, graders=graders)
+                results[index] = CaseExecutionResult(
+                    case=case,
+                    status="completed",
+                    output=output,
+                    graders=graders,
+                )
+                if checkpoint_path is not None:
+                    async with checkpoint_lock:
+                        completed[case.id] = case_result
+                        save_run_checkpoint(
+                            checkpoint_path, suite, run_manifest, completed
+                        )
+
+        workers = [
+            asyncio.create_task(worker())
+            for _ in range(min(self._max_concurrency, len(suite.cases)))
+        ]
+        try:
+            await asyncio.gather(*workers)
+        except BaseException:
+            for task in workers:
+                task.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
+            raise
+
+        if any(result is None for result in results):
+            raise RuntimeError(
+                "Failure-aware evaluation finished without an outcome for every case."
+            )
+
+        report = EvaluationExecutionReport(
+            manifest=run_manifest,
+            cases=tuple(cast(CaseExecutionResult, result) for result in results),
+        )
+        validate_execution_report(report)
+        return report
