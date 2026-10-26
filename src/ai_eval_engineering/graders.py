@@ -244,6 +244,7 @@ def _finite_numeric(value: Any) -> float | None:
 
 
 _JSON_FIELD_MISSING = object()
+_JSON_FIELD_UNSET = object()
 
 
 class JsonFieldGrader:
@@ -256,7 +257,13 @@ class JsonFieldGrader:
     into details or metadata.
     """
 
-    def __init__(self, path: str, name: str = "json_field") -> None:
+    def __init__(
+        self,
+        path: str,
+        name: str = "json_field",
+        *,
+        expected_value: Any = _JSON_FIELD_UNSET,
+    ) -> None:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("name must not be empty.")
         if not isinstance(path, str) or not path.startswith("/"):
@@ -268,6 +275,7 @@ class JsonFieldGrader:
             tokens.append(token.replace("~1", "/").replace("~0", "~"))
         self.name = name
         self.path = path
+        self.expected_value = expected_value
         self._tokens = tuple(tokens)
 
     def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
@@ -280,7 +288,12 @@ class JsonFieldGrader:
                 details="JSON Pointer path was not found in the output",
                 metadata={"path": self.path, "field_found": False},
             )
-        passed = _json_values_equal(actual, case.expected)
+        expected = (
+            case.expected
+            if self.expected_value is _JSON_FIELD_UNSET
+            else self.expected_value
+        )
+        passed = _json_values_equal(actual, expected)
         return GraderResult(
             grader=self.name,
             passed=passed,
