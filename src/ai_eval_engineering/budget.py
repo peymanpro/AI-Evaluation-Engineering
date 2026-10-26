@@ -525,8 +525,8 @@ class _LiveBudgetGuard:
                     cost_issues[0] if cost_issues else f"case {case_id!r} has invalid cost evidence",
                 )
 
-        latency_relevant = self.policy.max_case_latency_ms is not None
-        if latency_relevant:
+        latency_limit = self.policy.max_case_latency_ms
+        if latency_limit is not None:
             latency_issues: list[str] = []
             latency = _read_non_negative_measurement(
                 output.latency_ms, "latency_ms", case_id, latency_issues
@@ -546,13 +546,13 @@ class _LiveBudgetGuard:
                     )
             elif (
                 self._stop_status is None
-                and latency > float(self.policy.max_case_latency_ms)
+                and latency > latency_limit
             ):
                 self._stop(
                     "BUDGET_LIMIT_REACHED",
                     (
                         f"case {case_id!r} latency {latency:.8g} ms exceeded per-case cap "
-                        f"{self.policy.max_case_latency_ms:.8g} ms"
+                        f"{latency_limit:.8g} ms"
                     ),
                 )
 
