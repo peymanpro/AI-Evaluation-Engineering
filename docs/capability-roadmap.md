@@ -36,15 +36,15 @@ These are substantive foundations. The main risk is not the absence of a long fe
 
 **Remaining limitations:** no jitter, provider-specific rate-limit interpretation, distributed coordination, or idempotency guarantee. A request can be processed and billed before a client observes a timeout/connection error.
 
-### P1 — Common deterministic grader primitives (partially implemented)
+### P1 — Common deterministic grader primitives (implemented)
 
-**Problem:** `RuleBasedGrader` is extensible, but simple common checks should not require each consumer to write and test custom code.
+**Problem:** simple, deterministic checks should not require each consumer to write and test custom code, while combined grading needs an explicit and reproducible pass rule.
 
-**Implemented:** `ContainsGrader`, `RegexGrader`, and `NumericToleranceGrader` provide dependency-free, deterministic checks with explicit type-mismatch behavior and documented score semantics. Regex patterns can be configured once or supplied in each case's expected value; numeric tolerance combines absolute and relative error bounds.
+**Capability:** `ContainsGrader`, `RegexGrader`, and `NumericToleranceGrader` provide string and numeric checks; `JsonFieldGrader` compares one output field using JSON Pointer; `CompositeGrader` combines synchronous component scores with positive weights and an explicit all/any/score-threshold pass rule.
 
-**Remaining:** structured-field assertions and score composition should be designed separately so their expected-value contracts remain unambiguous when one run uses multiple graders. Avoid adding a broad "metric zoo" that duplicates application-specific rules.
+**Acceptance criteria:** dependency-free behavior; explicit type/target errors; exact JSON-pointer and numeric-tolerance semantics; unique child grader names; normalized component score bounds; tests and examples for missing fields, malformed pointers, pass modes, and weighted calculations.
 
-**Guardrail:** built-in graders must define normalization, type errors, pass/score behavior, and any untrusted-input limitations.
+**Guardrails:** regex patterns must be trusted because the standard regex engine has no execution deadline. Composite inputs must return finite scores in `[0, 1]`; the composite score is only as meaningful as the child graders' calibration, and async graders are not currently supported by the synchronous composite wrapper.
 
 ### P2 — Live budget guard (implemented)
 

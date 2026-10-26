@@ -52,3 +52,7 @@
 - Adapter retries are opt-in and limited to caller-selected exception classes. The policy does not infer which provider errors are safe to retry, add jitter, coordinate retries across processes, or guarantee idempotency. A timeout can occur after the provider has processed or billed a request, so retries may repeat cost or side effects.
 - Retry callbacks are an observation hook, not a durable event store. Consumers that need durable retry telemetry must persist emitted retry events themselves. An exception raised by the callback fails the run rather than being swallowed.
 - The retry policy's configuration is stored in the run manifest and checked against the runner's actual configuration. This records the declared policy, but cannot prove that external providers or adapters honored the intended idempotency semantics.
+
+
+- `JsonFieldGrader` is a deterministic JSON Pointer equality check, not a semantic or fuzzy evaluator. Missing paths fail. Use `NumericToleranceGrader` for numeric tolerances rather than weakening structured-value comparison.
+- `CompositeGrader` is synchronous and requires every child score to be finite and within [0, 1]. Its weighted score has no independent meaning beyond the selected child graders and weights; all-pass is the default pass rule. Async grader composition and learned weight calibration are not implemented.
