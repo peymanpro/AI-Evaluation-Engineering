@@ -34,6 +34,11 @@ jobs:
           ai-eval suite-schema > /tmp/evaluation-suite-v1.schema.json
           python -c 'import json; schema=json.load(open("/tmp/evaluation-suite-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1'
           ai-eval validate-suite examples/suites/support-smoke-v1.json
+      - name: Release policy schema and sample policy
+        run: |
+          ai-eval release-policy-schema > /tmp/release-policy-v1.schema.json
+          python -c 'import json; schema=json.load(open("/tmp/release-policy-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1; assert schema["$defs"]["policy"]["properties"]["metrics"]["minItems"] == 1'
+          python -c 'from ai_eval_engineering import load_release_policy_json; policy=load_release_policy_json("examples/policies/quality-latency-safety-v1.json"); assert len(policy.metrics) == 3; print("Three-metric release policy validated.")'
       - name: Core demo
         run: ai-eval-demo
       - name: Reserved budget demo
