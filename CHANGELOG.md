@@ -8,12 +8,12 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Optional `openai` extra and an OpenAI-compatible LLM judge using Chat Completions JSON Schema Structured Outputs.
 - `OpenAIJudgeGrader` to connect a configured judge to the existing `EvaluationRunner` grader contract, with an explicit label-to-pass mapping.
 - Provider/model/request and token-usage metadata for LLM judge results, without retaining the raw provider response.
-- Promptfoo v3 JSON import, versioned external-run JSON interchange, decision-grade paired release gates, and case-level failure-delta reporting.
+- Promptfoo v3 JSON import, versioned external-run JSON interchange with a packaged schema resource, decision-grade paired release gates, and case-level failure-delta reporting.
 - Persistent failure memory, class-aware judge calibration metrics, and a deterministic baseline/candidate workflow that joins Promptfoo import, release decisions, and regression triage.
 - PyPI publishing automation via Trusted Publishing, scoped to a separate publication job and backed by distribution metadata checks.
 
 ### Quality and release engineering
-- The CI suite contains 196 automated tests at the release-preparation commit, plus Ruff, mypy, and deterministic demonstration checks.
+- The CI suite contains 197 automated tests at the release-preparation commit, plus Ruff, mypy, and deterministic demonstration checks.
 - Synthetic fixtures are explicitly identified as test data, not real provider benchmark results.
 - The base installation remains free of mandatory runtime dependencies; the live judge SDK is optional.
 
