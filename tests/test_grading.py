@@ -307,3 +307,46 @@ def test_composite_grader_rejects_invalid_configuration(
 ) -> None:
     with pytest.raises(error, match=message):
         CompositeGrader([ExactMatchGrader(), ContainsGrader()], **kwargs)
+
+
+
+def test_json_field_grader_can_use_a_fixed_expected_value() -> None:
+    result = JsonFieldGrader(
+        "/decision",
+        expected_value="approved",
+    ).grade(
+        EvaluationCase("fixed-field", {}, expected=None),
+        SystemOutput("fixed-field", {"decision": "approved"}),
+    )
+
+    assert result.passed
+
+
+def test_composite_grader_combines_multiple_structured_field_assertions() -> None:
+    case = EvaluationCase("composite-json", {}, expected=None)
+    output = SystemOutput(
+        "composite-json",
+        {"decision": "approved", "safety": {"allowed": True}},
+    )
+    grader = CompositeGrader(
+        [
+            JsonFieldGrader(
+                "/decision",
+                name="decision",
+                expected_value="approved",
+            ),
+            JsonFieldGrader(
+                "/safety/allowed",
+                name="safety",
+                expected_value=True,
+            ),
+        ],
+        weights=[0.75, 0.25],
+        pass_mode="all",
+    )
+
+    result = grader.grade(case, output)
+
+    assert result.passed
+    assert result.score == pytest.approx(1.0)
+    assert result.metadata["components"][0]["weight"] == 0.75
