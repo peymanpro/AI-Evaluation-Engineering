@@ -674,6 +674,7 @@ class ReservedBudgetRunResult:
     completed_cases: tuple[CaseResult, ...]
     pending_case_ids: tuple[str, ...]
     incomplete_case_ids: tuple[str, ...]
+    unresolved_cost_case_ids: tuple[str, ...]
     status: ReservedBudgetStatus
     known_cost_usd: float
     reserved_cost_usd: float
@@ -709,6 +710,7 @@ class _ReservedBudgetController:
         self._case_cap = Decimal(str(policy.max_case_cost_usd))
         self._known_cost_usd = Decimal(0)
         self._reserved_cost_usd = Decimal(0)
+        self._unresolved_cost_case_ids: set[str] = set()
         self._stop_status: ReservedBudgetStatus | None = None
         self._stop_reason: str | None = None
 
@@ -719,6 +721,11 @@ class _ReservedBudgetController:
     @property
     def reserved_cost_usd(self) -> float:
         return float(self._reserved_cost_usd)
+
+    @property
+    def unresolved_cost_case_ids(self) -> frozenset[str]:
+        """Cases whose actual monetary cost could not be reconciled."""
+        return frozenset(self._unresolved_cost_case_ids)
 
     @property
     def stop_status(self) -> ReservedBudgetStatus | None:
@@ -772,6 +779,7 @@ class _ReservedBudgetController:
     ) -> float | None:
         """Settle one measured system/grader charge against the held reservation."""
         if cost_value is None:
+            self._unresolved_cost_case_ids.add(case_id)
             self.stop(
                 "INCOMPLETE_BUDGET_EVIDENCE",
                 f"case {case_id!r} {source} returned no cost measurement; its remaining reservation is retained",
@@ -780,6 +788,7 @@ class _ReservedBudgetController:
         issues: list[str] = []
         cost = _read_non_negative_measurement(cost_value, "cost_usd", case_id, issues)
         if cost is None:
+            self._unresolved_cost_case_ids.add(case_id)
             self.stop(
                 "INVALID_BUDGET_EVIDENCE",
                 issues[0] if issues else f"case {case_id!r} {source} cost evidence is invalid",
@@ -847,6 +856,7 @@ class _ReservedBudgetController:
     ) -> float | None:
         """Account for an existing checkpoint charge without a live reservation."""
         if cost_value is None:
+            self._unresolved_cost_case_ids.add(case_id)
             self.stop(
                 "INCOMPLETE_BUDGET_EVIDENCE",
                 f"checkpoint case {case_id!r} {source} has no cost measurement",
@@ -855,6 +865,7 @@ class _ReservedBudgetController:
         issues: list[str] = []
         cost = _read_non_negative_measurement(cost_value, "cost_usd", case_id, issues)
         if cost is None:
+            self._unresolved_cost_case_ids.add(case_id)
             self.stop(
                 "INVALID_BUDGET_EVIDENCE",
                 issues[0] if issues else f"checkpoint case {case_id!r} has invalid cost",
