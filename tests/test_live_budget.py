@@ -298,6 +298,41 @@ def test_async_runner_completes_current_batch_but_does_not_start_another() -> No
 
 
 
+
+def test_async_budget_status_prefers_proven_overrun_to_missing_cost_evidence() -> None:
+    base_suite = make_suite()
+    suite = EvaluationSuite(
+        base_suite.version,
+        tuple(
+            EvaluationCase(
+                case.id,
+                {
+                    **case.input,
+                    "delay": 0.001 if case.id == "case-0" else 0.01,
+                },
+                expected=case.expected,
+            )
+            for case in base_suite.cases
+        ),
+    )
+    adapter = AsyncCostAdapter(
+        {"case-0": None, "case-1": 0.60, "case-2": 0.01, "case-3": 0.01}
+    )
+    result = asyncio.run(
+        AsyncEvaluationRunner(adapter, [ExactMatchGrader()], max_concurrency=2).run_budgeted(
+            suite,
+            manifest_for(suite),
+            policy=RunBudgetPolicy(max_total_cost_usd=0.50),
+        )
+    )
+
+    assert set(adapter.calls) == {"case-0", "case-1"}
+    assert result.status == "BUDGET_LIMIT_REACHED"
+    assert result.known_cost_usd == pytest.approx(0.60)
+    assert "reached" in (result.stop_reason or "") or "exceeded" in (
+        result.stop_reason or ""
+    )
+
 def test_async_runner_stops_after_batch_when_token_cap_is_reached() -> None:
     suite = make_suite(tokens=3)
     adapter = AsyncCostAdapter({case.id: None for case in suite.cases})
