@@ -374,6 +374,46 @@ details. They are written atomically but are not encrypted and are not designed 
 processes to write concurrently to the same path. Keep them out of source control and protect them
 according to the sensitivity of the evaluated data.
 
+## Failure-aware evaluation reports
+
+The default `run()` methods remain fail-fast for backward compatibility. When the workflow should
+continue through unrelated cases and preserve per-case outcomes, use `run_report()` on either
+`EvaluationRunner` or `AsyncEvaluationRunner`. Each case is reported as `completed`,
+`adapter_error`, `output_validation_error`, `grader_error`, or `grader_contract_error`.
+A grading result with `passed=False` is still a completed execution; an exception is not converted
+into a score of zero.
+
+```python
+from ai_eval_engineering import (
+    EvaluationRunner,
+    load_execution_report,
+    write_execution_report,
+)
+
+report = EvaluationRunner(system_adapter, graders).run_report(suite, manifest)
+
+# Failed cases remain explicit; do not pass partial evidence to a release gate.
+print(report.completed_count, report.failed_count, report.is_complete)
+write_execution_report(report, "artifacts/execution-report.json")
+reloaded = load_execution_report("artifacts/execution-report.json")
+
+if reloaded.is_complete:
+    completed_run = reloaded.to_evaluation_run()
+```
+
+The async runner exposes the same report contract through `await runner.run_report(...)` and
+preserves suite order even when cases finish out of order. A grader exception preserves the
+validated system output and any earlier valid grader results for that case. Invalid system output
+is not copied into the report as trusted evidence. When a checkpoint path is supplied, successful
+cases are saved and reused; failed cases are re-attempted during resume. Checkpoint I/O failures and
+task cancellation still abort the run instead of being misclassified as case failures.
+
+Reports use the versioned `execution-report-v1` JSON envelope and are written with an atomic file
+replacement. The schema is available through `get_execution_report_schema()`. A partial report
+cannot be converted to an `EvaluationRun`; this guard prevents an incomplete set of cases from
+being accidentally treated as a complete baseline or candidate. Report files may contain exception
+messages and evaluated inputs/outputs, so store them as potentially sensitive artifacts.
+
 ## Run budget assessment
 
 `RunBudgetPolicy` evaluates measured cost, token usage, and per-case latency against explicit
