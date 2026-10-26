@@ -11,6 +11,12 @@ from pathlib import Path
 
 from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
+from .release_policy import (
+    ReleasePolicy,
+    export_release_policy_payload,
+    get_release_policy_schema,
+    load_release_policy_json,
+)
 from .result_import import get_external_run_schema, load_run_json
 from .slices import analyze_run_slices
 from .suite_io import get_evaluation_suite_schema, load_suite_json
@@ -42,6 +48,11 @@ def _parser() -> argparse.ArgumentParser:
         help="print the packaged evaluation-suite JSON Schema",
     )
 
+    commands.add_parser(
+        "release-policy-schema",
+        help="print the packaged release-policy JSON Schema",
+    )
+
     validate_suite = commands.add_parser(
         "validate-suite",
         help="validate a versioned evaluation-suite JSON file",
@@ -54,17 +65,52 @@ def _parser() -> argparse.ArgumentParser:
     )
     compare.add_argument("baseline", type=Path, help="baseline external-run-v1 JSON")
     compare.add_argument("candidate", type=Path, help="candidate external-run-v1 JSON")
-    compare.add_argument("--metric", required=True, help="grader name whose numeric score is gated")
+    compare_source = compare.add_mutually_exclusive_group(required=True)
+    compare_source.add_argument(
+        "--metric",
+        help="grader name whose numeric score is gated (single-metric compatibility mode)",
+    )
+    compare_source.add_argument(
+        "--policy",
+        type=Path,
+        help="versioned release-policy-v1 JSON file containing one or more metric gates",
+    )
     compare.add_argument(
         "--direction",
         choices=("higher_is_better", "lower_is_better"),
-        default="higher_is_better",
+        default=None,
+        help="single-metric direction; not accepted together with --policy",
     )
-    compare.add_argument("--max-allowed-regression", type=float, default=0.0)
-    compare.add_argument("--min-cases", type=int, default=30)
-    compare.add_argument("--confidence", type=float, default=0.95)
-    compare.add_argument("--resamples", type=int, default=2000)
-    compare.add_argument("--seed", type=int, default=0)
+    compare.add_argument(
+        "--max-allowed-regression",
+        type=float,
+        default=None,
+        help="single-metric regression tolerance; not accepted together with --policy",
+    )
+    compare.add_argument(
+        "--min-cases",
+        type=int,
+        default=None,
+        help="single-metric minimum paired cases; not accepted together with --policy",
+    )
+    compare.add_argument(
+        "--confidence",
+        type=float,
+        default=None,
+        help="single-metric confidence level; not accepted together with --policy",
+    )
+    compare.add_argument(
+        "--resamples",
+        type=int,
+        default=None,
+        help="single-metric bootstrap resamples; not accepted together with --policy",
+    )
+    compare.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="single-metric bootstrap seed; not accepted together with --policy",
+    )
 
     budget = commands.add_parser(
         "budget",
@@ -143,21 +189,59 @@ def _validate_suite(path: Path) -> int:
 def _compare_runs(args: argparse.Namespace) -> int:
     baseline = load_run_json(args.baseline)
     candidate = load_run_json(args.candidate)
-    policy = ReleaseMetricPolicy(
-        metric=args.metric,
-        direction=args.direction,
-        max_allowed_regression=args.max_allowed_regression,
-        min_cases=args.min_cases,
+
+    shared_options = (
+        args.direction,
+        args.max_allowed_regression,
+        args.min_cases,
+        args.confidence,
+        args.resamples,
+        args.seed,
     )
+    release_policy: ReleasePolicy | None = None
+    if args.policy is not None:
+        if any(value is not None for value in shared_options):
+            raise ValueError(
+                "--direction, --max-allowed-regression, --min-cases, --confidence, "
+                "--resamples, and --seed cannot be combined with --policy; "
+                "put these settings in the policy file."
+            )
+        release_policy = load_release_policy_json(args.policy)
+        metric_policies = list(release_policy.metrics)
+        confidence = release_policy.confidence
+        resamples = release_policy.resamples
+        seed = release_policy.seed
+    else:
+        if args.metric is None:
+            raise ValueError("Provide either --metric or --policy.")
+        metric_policies = [
+            ReleaseMetricPolicy(
+                metric=args.metric,
+                direction=args.direction or "higher_is_better",
+                max_allowed_regression=(
+                    args.max_allowed_regression
+                    if args.max_allowed_regression is not None
+                    else 0.0
+                ),
+                min_cases=args.min_cases if args.min_cases is not None else 30,
+            )
+        ]
+        confidence = args.confidence if args.confidence is not None else 0.95
+        resamples = args.resamples if args.resamples is not None else 2000
+        seed = args.seed if args.seed is not None else 0
+
     decision = evaluate_release_candidate(
         baseline,
         candidate,
-        [policy],
-        confidence=args.confidence,
-        resamples=args.resamples,
-        seed=args.seed,
+        metric_policies,
+        confidence=confidence,
+        resamples=resamples,
+        seed=seed,
     )
-    _print_json(asdict(decision))
+    output = asdict(decision)
+    if release_policy is not None:
+        output["policy"] = export_release_policy_payload(release_policy)
+    _print_json(output)
     return 0 if decision.status == "PASS" else 1
 
 
@@ -206,6 +290,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "suite-schema":
             _print_json(get_evaluation_suite_schema())
+            return 0
+        if args.command == "release-policy-schema":
+            _print_json(get_release_policy_schema())
             return 0
         if args.command == "validate-suite":
             return _validate_suite(args.path)
