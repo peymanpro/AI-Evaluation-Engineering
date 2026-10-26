@@ -6,8 +6,10 @@ from typing import Any
 
 import pytest
 
-from ai_eval_engineering.domain import EvaluationCase, SystemOutput
+from ai_eval_engineering.domain import EvaluationCase, EvaluationSuite, SystemOutput
+from ai_eval_engineering.integrations import ContractAdapter, IntegrationSpec
 from ai_eval_engineering.judge import EvaluationRubric, RubricDimension
+from ai_eval_engineering.runner import EvaluationRunner, build_run_metadata
 from ai_eval_engineering.openai_judge import (
     JudgeProviderError,
     OpenAICompatibleJudge,
@@ -289,3 +291,28 @@ def test_runner_compatible_grader_rejects_empty_pass_label_policy() -> None:
 
     with pytest.raises(ValueError, match="pass_labels"):
         OpenAIJudgeGrader(judge, make_rubric(), pass_labels=())
+
+def test_llm_judge_grader_runs_through_the_standard_evaluation_runner() -> None:
+    client, _ = make_client(make_response(result_json(label="pass")))
+    judge = OpenAICompatibleJudge(model="test-model", client=client)
+    grader = OpenAIJudgeGrader(judge, make_rubric(), name="judge-quality")
+    suite = EvaluationSuite("judge-suite-v1", (make_case(),))
+    adapter = ContractAdapter(
+        IntegrationSpec("fixture/system", "revision-1", "synthetic runner fixture"),
+        lambda _case: make_output(),
+    )
+    manifest = build_run_metadata(
+        suite,
+        "fixture/system",
+        "revision-1",
+        {"provider": "fake-client"},
+        seed=0,
+    )
+
+    run = EvaluationRunner(adapter, [grader]).run(suite, manifest)
+
+    assert len(run.cases) == 1
+    assert run.cases[0].graders[0].grader == "judge-quality"
+    assert run.cases[0].graders[0].passed is True
+    assert run.cases[0].graders[0].score == 0.95
+    assert run.cases[0].graders[0].metadata["provider"] == "openai-compatible"
