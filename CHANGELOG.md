@@ -21,6 +21,9 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 ### Maintained
 - PyPI upload remains opt-in and is not triggered by normal branch or tag pushes while capabilities are in development.
 
+### Fixed
+- The external-run-v1 importer and packaged JSON Schema reject unknown fields at contract boundaries, preventing silent loss of unrecognized run evidence while preserving extensible application-owned JSON objects.
+
 ## 0.2.0 - 2026-10-26
 
 ### Added
