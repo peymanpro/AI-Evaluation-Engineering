@@ -77,9 +77,9 @@ jobs:
           echo "tag=v$project_version" >> "$GITHUB_OUTPUT"
           echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Install package and developer tools
+      - name: Install package, developer tools, and the optional judge SDK
         if: steps.version.outputs.skip != 'true'
-        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,openai]"
 
       - name: Tests
         if: steps.version.outputs.skip != 'true'
@@ -92,6 +92,11 @@ jobs:
       - name: Mypy
         if: steps.version.outputs.skip != 'true'
         run: mypy src
+
+      - name: Verify optional OpenAI SDK initialization without a network call
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          python -c 'from ai_eval_engineering import OpenAICompatibleJudge; judge = OpenAICompatibleJudge(model="package-smoke-test", api_key="test-only-key", base_url="http://127.0.0.1:1"); assert judge._client is not None; print("Optional OpenAI SDK initialization passed.")'
 
       - name: Verify demonstrations
         if: steps.version.outputs.skip != 'true'
