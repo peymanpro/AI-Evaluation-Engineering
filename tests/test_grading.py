@@ -283,7 +283,7 @@ class OutOfRangeScoreGrader:
 def test_composite_grader_rejects_component_scores_outside_zero_to_one() -> None:
     grader = CompositeGrader([OutOfRangeScoreGrader()])
 
-    with pytest.raises(ValueError, match="score in \[0, 1\]"):
+    with pytest.raises(ValueError, match=r"score in \[0, 1\]"):
         grader.grade(
             EvaluationCase("out-of-range", {}, expected="answer"),
             SystemOutput("out-of-range", "answer"),
