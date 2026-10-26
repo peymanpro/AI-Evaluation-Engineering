@@ -12,8 +12,8 @@ from pathlib import Path
 from .budget import RunBudgetPolicy, assess_run_budget
 from .release_gate import ReleaseMetricPolicy, evaluate_release_candidate
 from .result_import import get_external_run_schema, load_run_json
-from .suite_io import get_evaluation_suite_schema, load_suite_json
 from .slices import analyze_run_slices
+from .suite_io import get_evaluation_suite_schema, load_suite_json
 
 
 def _parser() -> argparse.ArgumentParser:
