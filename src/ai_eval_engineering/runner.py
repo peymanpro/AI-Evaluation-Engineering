@@ -13,7 +13,7 @@ from typing import Any, Protocol
 
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
-from .retry import RetryPolicy
+from .retry import RetryPolicy, validate_retry_policy_manifest
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -47,8 +47,17 @@ def build_run_metadata(
     system_version: str,
     configuration: JsonObject | None = None,
     seed: int | None = None,
+    *,
+    retry_policy: RetryPolicy | None = None,
 ) -> RunMetadata:
-    config = configuration or {}
+    config = dict(configuration or {})
+    if retry_policy is not None:
+        if not isinstance(retry_policy, RetryPolicy):
+            raise TypeError("retry_policy must be a RetryPolicy or None.")
+        retry_settings = retry_policy.to_dict()
+        if "retry_policy" in config and config["retry_policy"] != retry_settings:
+            raise ValueError("configuration.retry_policy does not match retry_policy.")
+        config["retry_policy"] = retry_settings
     return RunMetadata(
         run_id=str(uuid.uuid4()),
         suite_version=suite.version,
@@ -105,6 +114,7 @@ class EvaluationRunner:
         system identity, configuration, and environment before reusing those cases.
         """
         validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
         run_manifest = manifest
         completed: dict[str, CaseResult] = {}
         if checkpoint_path is not None:
