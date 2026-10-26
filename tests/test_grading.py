@@ -1,13 +1,8 @@
 import pytest
 
+from ai_eval_engineering import ContainsGrader, NumericToleranceGrader, RegexGrader
 from ai_eval_engineering.domain import EvaluationCase, SystemOutput
-from ai_eval_engineering.graders import (
-    ContainsGrader,
-    ExactMatchGrader,
-    NumericToleranceGrader,
-    RegexGrader,
-    TrajectoryGrader,
-)
+from ai_eval_engineering.graders import ExactMatchGrader, TrajectoryGrader
 
 
 def test_exact_match_normalizes_text() -> None:
@@ -112,3 +107,28 @@ def test_numeric_tolerance_configuration_must_be_finite_and_non_negative() -> No
         NumericToleranceGrader(abs_tol=float("inf"))
     with pytest.raises(ValueError, match="finite and non-negative"):
         NumericToleranceGrader(rel_tol=-0.1)
+
+
+
+def test_contains_grader_can_use_a_configured_substring() -> None:
+    result = ContainsGrader(substring="approved").grade(
+        EvaluationCase("configured-contains", {}, expected=None),
+        SystemOutput("configured-contains", "Request approved by policy"),
+    )
+
+    assert result.passed
+
+
+def test_regex_grader_can_use_a_precompiled_configured_pattern() -> None:
+    grader = RegexGrader(pattern=r"ORDER-[0-9]{4}", full_match=True)
+    result = grader.grade(
+        EvaluationCase("configured-regex", {}, expected=None),
+        SystemOutput("configured-regex", "ORDER-1234"),
+    )
+
+    assert result.passed
+
+
+def test_regex_grader_rejects_invalid_configured_pattern_at_construction() -> None:
+    with pytest.raises(ValueError, match="valid regular-expression"):
+        RegexGrader(pattern="[")
