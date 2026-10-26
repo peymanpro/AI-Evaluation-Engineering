@@ -6,6 +6,7 @@ import asyncio
 import math
 from typing import Protocol, cast
 
+from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -73,6 +74,7 @@ class AsyncEvaluationRunner:
         contract. Adapter calls are bounded; grader methods use the existing
         synchronous `grade(case, output)` interface.
         """
+        validate_run_inputs(suite, manifest)
         results: list[CaseResult | None] = [None] * len(suite.cases)
         cases = iter(enumerate(suite.cases))
 
@@ -100,17 +102,11 @@ class AsyncEvaluationRunner:
                                 f"{timeout_seconds:g} seconds."
                             ) from exc
                         raise
-                if not isinstance(output, SystemOutput):
-                    raise TypeError(
-                        f"System adapter must return SystemOutput for case {case.id!r}."
-                    )
-                if output.case_id != case.id:
-                    raise ValueError(
-                        f"System returned case id {output.case_id!r} for expected {case.id!r}."
-                    )
+                validate_system_output(case, output)
                 graded: tuple[GraderResult, ...] = tuple(
                     grader.grade(case, output) for grader in self._graders
                 )
+                validate_grader_results(graded, case.id)
                 results[index] = CaseResult(case=case, output=output, graders=graded)
 
         workers = [

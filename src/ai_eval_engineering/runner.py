@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
     CaseResult,
     EvaluationCase,
@@ -65,14 +66,13 @@ class EvaluationRunner:
         self._graders = graders
 
     def run(self, suite: EvaluationSuite, manifest: RunMetadata) -> EvaluationRun:
+        validate_run_inputs(suite, manifest)
         results: list[CaseResult] = []
         for case in suite.cases:
             output = self._adapter.run(case)
-            if output.case_id != case.id:
-                raise ValueError(
-                    f"System returned case id {output.case_id!r} for expected {case.id!r}."
-                )
+            validate_system_output(case, output)
             grader_results = tuple(grader.grade(case, output) for grader in self._graders)
+            validate_grader_results(grader_results, case.id)
             results.append(CaseResult(case=case, output=output, graders=grader_results))
         return EvaluationRun(manifest=manifest, cases=tuple(results))
 
