@@ -371,6 +371,7 @@ def _read_case_token_usage(
 
     return (sum(totals), False, None) if totals else (None, False, None)
 
+
 LiveBudgetStatus = Literal[
     "COMPLETED",
     "BUDGET_LIMIT_REACHED",
