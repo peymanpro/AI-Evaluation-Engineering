@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import platform
 import time
 import uuid
@@ -253,7 +254,8 @@ class EvaluationRunner:
         for grader in self._graders:
             if getattr(grader, "budget_cost_free", False) is True:
                 continue
-            if not callable(getattr(grader, "grade_with_budget", None)):
+            budget_grade = getattr(grader, "grade_with_budget", None)
+            if not callable(budget_grade):
                 raise TypeError(
                     f"grader {type(grader).__name__} must implement grade_with_budget "
                     "or explicitly declare budget_cost_free = True."
@@ -347,7 +349,8 @@ class EvaluationRunner:
                     )
                     break
                 try:
-                    grader_result = grader.grade_with_budget(
+                    budget_grade = getattr(grader, "grade_with_budget")
+                    grader_result = budget_grade(
                         case, output, max_cost_usd=remaining_case_budget
                     )
                 except RequestBudgetExceeded as exc:
