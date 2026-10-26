@@ -105,7 +105,8 @@ root envelope, manifest, case result, case definition, system output, and grader
 than silently dropping data during import/export. Application-owned JSON objects inside case
 inputs, expected values, outputs, metadata, configuration, environment, traces, and grader metadata
 remain extensible. Changes to the envelope itself must be coordinated through an explicit schema
-version instead of relying on unrecognized fields being ignored.
+version instead of relying on unrecognized fields being ignored. Programmatic calls to
+`import_run_payload` also reject cyclic Python containers, which cannot be represented in JSON.
 
 ## Versioned evaluation suites
 
