@@ -88,8 +88,8 @@ from .result_import import (
 )
 from .runner import EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
-from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 from .slices import GraderSliceMetric, SliceSummary, analyze_run_slices
+from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
 from .suite_io import (
     EVALUATION_SUITE_SCHEMA_VERSION,
     export_suite_payload,
@@ -159,9 +159,9 @@ __all__ = [
     "TradeoffObservation",
     "Trajectory",
     "TrajectoryEvent",
+    "analyze_run_slices",
     "assess_online_evidence",
     "assess_run_budget",
-    "analyze_run_slices",
     "build_failure_regression_suite",
     "build_metric_contract",
     "building_software_adapter",
