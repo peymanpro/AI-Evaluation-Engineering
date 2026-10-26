@@ -2,6 +2,7 @@
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
 from .async_runner import (
+    AsyncBudgetedGrader,
     AsyncBudgetedSystemAdapter,
     AsyncEvaluationRunner,
     AsyncGrader,
@@ -129,6 +130,7 @@ __all__ = [
     "AgentEvaluationResult",
     "AgentSuccessCriteria",
     "AggregatedResult",
+    "AsyncBudgetedGrader",
     "AsyncBudgetedSystemAdapter",
     "AsyncEvaluationRunner",
     "AsyncGrader",
