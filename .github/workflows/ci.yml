@@ -50,3 +50,5 @@ jobs:
         run: python examples/async_evaluation.py
       - name: Deterministic graders demo
         run: python examples/deterministic_graders.py
+      - name: Retry policy demo
+        run: python examples/retry_policy.py
