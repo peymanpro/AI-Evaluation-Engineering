@@ -3,29 +3,26 @@
 from __future__ import annotations
 
 import asyncio
-from typing import cast
+from typing import Protocol, cast
 
 from .domain import (
     CaseResult,
+    EvaluationCase,
     EvaluationRun,
     EvaluationSuite,
     GraderResult,
+    RunMetadata,
     SystemOutput,
 )
 from .runner import Grader
 
 
-class AsyncSystemAdapter:
-    """Protocol-like base contract for asynchronous system adapters.
+class AsyncSystemAdapter(Protocol):
+    """Contract for an asynchronous system adapter."""
 
-    Implementations must provide an async `run` method and return the output
-    for the supplied case. The runner keeps grading synchronous so existing
-    deterministic graders can be reused unchanged.
-    """
-
-    async def run(self, case: object) -> SystemOutput:
+    async def run(self, case: EvaluationCase) -> SystemOutput:
         """Execute one evaluation case asynchronously."""
-        raise NotImplementedError
+        ...
 
 
 class AsyncEvaluationRunner:
@@ -54,7 +51,7 @@ class AsyncEvaluationRunner:
         self._graders = tuple(graders)
         self._max_concurrency = max_concurrency
 
-    async def run(self, suite: EvaluationSuite, manifest: object) -> EvaluationRun:
+    async def run(self, suite: EvaluationSuite, manifest: RunMetadata) -> EvaluationRun:
         """Run an evaluation suite through an async adapter.
 
         The manifest is retained as provided, matching the sync runner's
@@ -103,8 +100,6 @@ class AsyncEvaluationRunner:
             raise RuntimeError("Async evaluation finished without producing every case result.")
 
         return EvaluationRun(
-            manifest=cast("EvaluationRun", object()).manifest
-            if False
-            else manifest,  # type: ignore[arg-type]
+            manifest=manifest,
             cases=tuple(cast(CaseResult, result) for result in results),
         )
