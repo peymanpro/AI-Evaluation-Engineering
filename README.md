@@ -5,7 +5,7 @@
 [![Python 3.11–3.13 tested](https://img.shields.io/badge/python-3.11--3.13-3776AB.svg)](https://www.python.org/)
 [![CI](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml)
 [![Latest GitHub Release](https://img.shields.io/github/v/release/peymanpro/AI-Evaluation-Engineering)](https://github.com/peymanpro/AI-Evaluation-Engineering/releases)
-[![PyPI project](https://img.shields.io/badge/PyPI-ai--evaluation--engineering-3775A9.svg)](https://pypi.org/project/ai-evaluation-engineering/)
+[![PyPI version](https://img.shields.io/pypi/v/ai-evaluation-engineering.svg)](https://pypi.org/project/ai-evaluation-engineering/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 The library keeps case-level observations and run metadata available for inspection. It helps teams answer not only *“What score did this model get?”*, but also *“Which cases failed, how certain is the comparison, what did the run cost, and is the evidence complete enough to support a release decision?”*
@@ -68,12 +68,10 @@ The library separates **execution**, **grading**, **statistical interpretation**
 
 ## Installation
 
-**The `v0.3.0` GitHub Release is available, but the initial PyPI upload is still pending.** The [PyPI project page](https://pypi.org/project/ai-evaluation-engineering/) is the intended installation target. Until the first upload succeeds, install from a source checkout. Once published, the package can be installed with `python -m pip install ai-evaluation-engineering`.
+**Version `0.3.0` is published on PyPI.** Install the library from the public package index with:
 
 ~~~bash
-git clone https://github.com/peymanpro/AI-Evaluation-Engineering.git
-cd AI-Evaluation-Engineering
-python -m pip install -e .
+python -m pip install ai-evaluation-engineering
 ~~~
 
 For tests and development tools:
@@ -584,8 +582,8 @@ Generated `artifacts/` files are ignored by Git. Do not commit run outputs that 
 
 ## Release status
 
-The `v0.3.0` GitHub Release is published with its built distributions. **The initial PyPI upload has not yet been completed.** The intended PyPI project page is [ai-evaluation-engineering](https://pypi.org/project/ai-evaluation-engineering/). The older `v0.2.0` release points to an earlier source revision and should not be treated as the distribution of the current `main` capabilities.
+Version `0.3.0` has been published to [PyPI](https://pypi.org/project/ai-evaluation-engineering/0.3.0/) and the matching [GitHub Release](https://github.com/peymanpro/AI-Evaluation-Engineering/releases/tag/v0.3.0) includes the built distributions. The older `v0.2.0` release points to an earlier source revision and should not be treated as the distribution of the current `main` capabilities.
 
-The release workflow validates the source, builds and checks the distributions, verifies wheel installation, and creates the matching GitHub Release. After the automatic-publishing workflow change is merged, a push to `main` will also publish to PyPI **when `pyproject.toml` contains a new version whose matching tag does not already exist**. Commits that keep the current version are deliberately skipped; a published PyPI version cannot be overwritten. Bump the project version for each release.
+The release workflow validates the source, builds and checks the distributions, verifies wheel installation, and creates the matching GitHub Release. A push to `main` publishes to PyPI when `pyproject.toml` contains a new version whose matching tag does not already exist. Commits that keep the current version are deliberately skipped because published PyPI versions cannot be overwritten. Bump the project version for each release.
 
-The manual `workflow_dispatch` option with `publish_pypi=true` remains available for the initial `0.3.0` upload and an explicit retry. PyPI Trusted Publishing must match owner `peymanpro`, repository `AI-Evaluation-Engineering`, workflow `release.yml`, and environment `pypi`. Until the first PyPI upload is confirmed, follow the source-install instructions above.
+The manual `workflow_dispatch` option with `publish_pypi=true` remains available for explicit release retries. PyPI Trusted Publishing is configured for owner `peymanpro`, repository `AI-Evaluation-Engineering`, workflow `release.yml`, and environment `pypi`.
