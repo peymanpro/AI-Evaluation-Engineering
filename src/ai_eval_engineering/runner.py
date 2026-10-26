@@ -200,7 +200,9 @@ class EvaluationRunner:
         pending_case_ids = tuple(
             case.id for case in suite.cases if case.id not in completed
         )
-        status = guard.finish(pending_case_ids)
+        status = guard.finish(
+            pending_case_ids, completed_case_count=len(ordered_completed)
+        )
         return BudgetedRunResult(
             manifest=run_manifest,
             completed_cases=ordered_completed,
