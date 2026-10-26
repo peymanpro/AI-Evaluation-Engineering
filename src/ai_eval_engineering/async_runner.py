@@ -494,9 +494,7 @@ class AsyncEvaluationRunner:
                         case, output, max_cost_usd=remaining_case_budget
                     )
                     if inspect.isawaitable(budgeted_grader_result):
-                        budgeted_grader_result = await cast(
-                            Awaitable[GraderResult], budgeted_grader_result
-                        )
+                        budgeted_grader_result = await budgeted_grader_result
                 except RequestBudgetExceeded as exc:
                     controller.stop(
                         "BUDGET_LIMIT_REACHED",
