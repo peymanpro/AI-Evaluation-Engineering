@@ -11,7 +11,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .budget import BudgetedRunResult, RunBudgetPolicy, _LiveBudgetGuard
+from .budget import (
+    BudgetedRunResult,
+    RequestBudgetExceeded,
+    ReservedBudgetPolicy,
+    ReservedBudgetRunResult,
+    RunBudgetPolicy,
+    _LiveBudgetGuard,
+    _ReservedBudgetController,
+)
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
@@ -211,6 +219,199 @@ class EvaluationRunner:
             known_cost_usd=guard.known_cost_usd,
             known_tokens=guard.known_tokens,
             stop_reason=guard.stop_reason,
+        )
+
+
+    def run_reserved_budgeted(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        policy: ReservedBudgetPolicy,
+        checkpoint_path: str | Path | None = None,
+    ) -> ReservedBudgetRunResult:
+        """Execute only through components that honor pre-request cost ceilings.
+
+        Every billable adapter/grader must accept a `max_cost_usd` argument and
+        enforce it before making provider calls. Deterministic graders may opt in
+        with `budget_cost_free = True`. Retries are disabled because a failed
+        request may already have been billed.
+        """
+        validate_run_inputs(suite, manifest)
+        if not isinstance(policy, ReservedBudgetPolicy):
+            raise TypeError("policy must be a ReservedBudgetPolicy.")
+        if self._retry_policy is not None:
+            raise ValueError(
+                "run_reserved_budgeted does not allow retries; an attempted request may already be billed."
+            )
+        adapter_call = getattr(self._adapter, "run_with_budget", None)
+        if not callable(adapter_call):
+            raise TypeError(
+                "run_reserved_budgeted requires an adapter implementing "
+                "run_with_budget(case, *, max_cost_usd); ordinary adapters are not safe for reserved mode."
+            )
+        for grader in self._graders:
+            if getattr(grader, "budget_cost_free", False) is True:
+                continue
+            if not callable(getattr(grader, "grade_with_budget", None)):
+                raise TypeError(
+                    f"grader {type(grader).__name__} must implement grade_with_budget "
+                    "or explicitly declare budget_cost_free = True."
+                )
+
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
+        controller = _ReservedBudgetController(policy)
+        for case in suite.cases:
+            saved = completed.get(case.id)
+            if saved is None:
+                continue
+            case_spent = controller.record_existing_component_cost(
+                saved.output.cost_usd,
+                case_id=case.id,
+                source="system adapter",
+                case_spent_usd=0.0,
+            )
+            if case_spent is None:
+                continue
+            for grader, grader_result in zip(self._graders, saved.graders, strict=True):
+                if getattr(grader, "budget_cost_free", False) is True:
+                    continue
+                grader_cost = controller.record_existing_component_cost(
+                    grader_result.metadata.get("cost_usd"),
+                    case_id=case.id,
+                    source=f"grader {grader_result.grader!r}",
+                    case_spent_usd=case_spent,
+                )
+                if grader_cost is None:
+                    break
+                case_spent = math.fsum((case_spent, grader_cost))
+            if case_spent > float(policy.max_case_cost_usd):
+                controller.stop(
+                    "REQUEST_CAP_VIOLATED",
+                    f"checkpoint case {case.id!r} exceeds its configured case cost cap",
+                )
+
+        for case in suite.cases:
+            if case.id in completed or controller.stop_status is not None:
+                continue
+            allocation = controller.reserve_case()
+            if allocation is None:
+                break
+            case_spent = 0.0
+            try:
+                output = adapter_call(case, max_cost_usd=allocation)
+            except RequestBudgetExceeded as exc:
+                controller.stop(
+                    "BUDGET_LIMIT_REACHED",
+                    f"adapter declined case {case.id!r} before sending a request: {exc}",
+                )
+                controller.release_case(allocation, case_spent)
+                break
+
+            validate_system_output(case, output)
+            output_cost = controller.record_component_cost(
+                output.cost_usd,
+                case_id=case.id,
+                source="system adapter",
+                allocation_usd=allocation,
+                case_spent_usd=case_spent,
+            )
+            if output_cost is None:
+                # Keep the remaining reservation: real spend is unknown.
+                break
+            case_spent = math.fsum((case_spent, output_cost))
+            if controller.stop_status is not None:
+                controller.release_case(allocation, case_spent)
+                break
+
+            grader_results: list[GraderResult] = []
+            for grader in self._graders:
+                if controller.stop_status is not None:
+                    break
+                if getattr(grader, "budget_cost_free", False) is True:
+                    grader_result = grader.grade(case, output)
+                    if not isinstance(grader_result, GraderResult):
+                        raise TypeError("Graders must return GraderResult instances.")
+                    grader_results.append(grader_result)
+                    continue
+
+                remaining_case_budget = max(0.0, allocation - case_spent)
+                if remaining_case_budget <= 0.0:
+                    controller.stop(
+                        "BUDGET_LIMIT_REACHED",
+                        f"no case budget remains for grader {type(grader).__name__} on case {case.id!r}",
+                    )
+                    break
+                try:
+                    grader_result = grader.grade_with_budget(
+                        case, output, max_cost_usd=remaining_case_budget
+                    )
+                except RequestBudgetExceeded as exc:
+                    controller.stop(
+                        "BUDGET_LIMIT_REACHED",
+                        f"grader declined case {case.id!r} before sending a request: {exc}",
+                    )
+                    break
+                if not isinstance(grader_result, GraderResult):
+                    raise TypeError("Budget-aware graders must return GraderResult instances.")
+                grader_cost = controller.record_component_cost(
+                    grader_result.metadata.get("cost_usd"),
+                    case_id=case.id,
+                    source=f"grader {grader_result.grader!r}",
+                    allocation_usd=allocation,
+                    case_spent_usd=case_spent,
+                )
+                if grader_cost is None:
+                    # Keep the remaining reservation until accounting is reconciled.
+                    break
+                case_spent = math.fsum((case_spent, grader_cost))
+                grader_results.append(grader_result)
+                if controller.stop_status is not None:
+                    break
+
+            if len(grader_results) != len(self._graders):
+                if controller.stop_status is None:
+                    controller.stop(
+                        "INCOMPLETE_BUDGET_EVIDENCE",
+                        f"case {case.id!r} did not complete every grader",
+                    )
+                if controller.stop_status in (
+                    "BUDGET_LIMIT_REACHED",
+                    "REQUEST_CAP_VIOLATED",
+                ):
+                    controller.release_case(allocation, case_spent)
+                break
+
+            graded = tuple(grader_results)
+            validate_grader_results(graded, case.id)
+            case_result = CaseResult(case=case, output=output, graders=graded)
+            completed[case.id] = case_result
+            if checkpoint_path is not None:
+                save_run_checkpoint(checkpoint_path, suite, run_manifest, completed)
+            controller.release_case(allocation, case_spent)
+
+        ordered_completed = tuple(
+            completed[case.id] for case in suite.cases if case.id in completed
+        )
+        pending_case_ids = tuple(
+            case.id for case in suite.cases if case.id not in completed
+        )
+        status = controller.finish(
+            pending_case_ids=pending_case_ids,
+            completed_case_count=len(ordered_completed),
+        )
+        return ReservedBudgetRunResult(
+            manifest=run_manifest,
+            completed_cases=ordered_completed,
+            pending_case_ids=pending_case_ids,
+            status=status,
+            known_cost_usd=controller.known_cost_usd,
+            reserved_cost_usd=controller.reserved_cost_usd,
+            stop_reason=controller.stop_reason,
         )
 
 
