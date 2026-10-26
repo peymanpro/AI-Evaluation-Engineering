@@ -9,12 +9,12 @@ import pytest
 from ai_eval_engineering.domain import EvaluationCase, EvaluationSuite, SystemOutput
 from ai_eval_engineering.integrations import ContractAdapter, IntegrationSpec
 from ai_eval_engineering.judge import EvaluationRubric, RubricDimension
-from ai_eval_engineering.runner import EvaluationRunner, build_run_metadata
 from ai_eval_engineering.openai_judge import (
     JudgeProviderError,
     OpenAICompatibleJudge,
     OpenAIJudgeGrader,
 )
+from ai_eval_engineering.runner import EvaluationRunner, build_run_metadata
 
 
 def make_rubric() -> EvaluationRubric:
