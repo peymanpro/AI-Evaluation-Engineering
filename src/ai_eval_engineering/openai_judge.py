@@ -44,26 +44,7 @@ class OpenAICompatibleJudge:
         max_retries: int = 2,
         temperature: float | None = None,
     ) -> None:
-        if not isinstance(model, str) or not model.strip():
-            raise ValueError("model must not be empty.")
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not math.isfinite(float(timeout))
-            or timeout <= 0
-        ):
-            raise ValueError("timeout must be a finite number greater than zero.")
-        if isinstance(max_retries, bool) or not isinstance(max_retries, int):
-            raise TypeError("max_retries must be an integer.")
-        if max_retries < 0:
-            raise ValueError("max_retries must be non-negative.")
-        if temperature is not None and (
-            isinstance(temperature, bool)
-            or not isinstance(temperature, (int, float))
-            or not math.isfinite(float(temperature))
-            or not 0.0 <= temperature <= 2.0
-        ):
-            raise ValueError("temperature must be finite and between 0 and 2.")
+        _validate_judge_configuration(model, timeout, max_retries, temperature)
 
         if client is None:
             try:
