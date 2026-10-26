@@ -571,6 +571,11 @@ class AsyncEvaluationRunner:
             incomplete_case_ids=tuple(
                 case.id for case in suite.cases if case.id in incomplete_cases
             ),
+            unresolved_cost_case_ids=tuple(
+                case.id
+                for case in suite.cases
+                if case.id in controller.unresolved_cost_case_ids
+            ),
             status=status,
             known_cost_usd=controller.known_cost_usd,
             reserved_cost_usd=controller.reserved_cost_usd,
