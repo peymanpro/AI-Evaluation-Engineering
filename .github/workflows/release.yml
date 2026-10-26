@@ -101,6 +101,8 @@ jobs:
       - name: Verify demonstrations
         if: steps.version.outputs.skip != 'true'
         run: |
+          ai-eval --help
+          ai-eval schema > "$RUNNER_TEMP/external-run-v1.schema.json"
           ai-eval-demo
           python examples/online_experiment.py
           python examples/security_regression.py
