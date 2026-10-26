@@ -34,6 +34,8 @@ jobs:
           ai-eval suite-schema > /tmp/evaluation-suite-v1.schema.json
           python -c 'import json; schema=json.load(open("/tmp/evaluation-suite-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1'
           ai-eval validate-suite examples/suites/support-smoke-v1.json
+      - name: Execution report schema
+        run: python -c 'from ai_eval_engineering import get_execution_report_schema; schema=get_execution_report_schema(); assert schema["properties"]["schema_version"]["const"] == 1'
       - name: Core demo
         run: ai-eval-demo
       - name: Online evaluation demo
@@ -52,5 +54,5 @@ jobs:
         run: python examples/deterministic_graders.py
       - name: Retry policy demo
         run: python examples/retry_policy.py
-      - name: Retry policy demo
-        run: python examples/retry_policy.py
+      - name: Failure-aware evaluation report demo
+        run: python examples/failure_aware_evaluation.py
