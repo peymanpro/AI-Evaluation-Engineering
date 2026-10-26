@@ -10,7 +10,7 @@ The current repository is more than a basic evaluation loop. It includes:
 
 - typed cases, versioned suites, strict JSON interchange, preflight contract validation, and run manifests;
 - synchronous and bounded-concurrency asynchronous runners, per-case async deadlines, and resumable checkpoints;
-- deterministic exact-match, schema, rule-based, and trajectory graders, plus optional synchronous and native-async OpenAI-compatible judges;
+- deterministic exact-match, substring, regex, numeric-tolerance, schema, rule-based, and trajectory graders, plus optional synchronous and native-async OpenAI-compatible judges;
 - judge calibration against supplied human labels, confidence intervals, paired comparisons, direction-aware regression gates, and decision-grade release evaluation;
 - Promptfoo v3 import, failure-delta reports, persistent failure memory, auditable evidence packages, a recorded-run CLI, post-run budget assessment, online-evidence guardrails, and cost/latency trade-off frontiers.
 
@@ -18,7 +18,7 @@ These are substantive foundations. The main risk is not the absence of a long fe
 
 ## Priority order
 
-### P1 — Subgroup/slice diagnostics (implemented in this branch)
+### P1 — Subgroup/slice diagnostics (implemented)
 
 **Problem:** An overall pass rate or mean score can look healthy while failures concentrate in a security category, locale, customer tier, language, or other subset.
 
@@ -34,11 +34,15 @@ These are substantive foundations. The main risk is not the absence of a long fe
 
 **Guardrail:** never retry all exceptions by default, and never imply that retrying a request is cost-free or idempotent.
 
-### P1 — Common deterministic grader primitives
+### P1 — Common deterministic grader primitives (partially implemented)
 
-**Problem:** `RuleBasedGrader` is extensible, but common checks (string containment/regular expression, numeric tolerance, structured-field assertions, and score composition) currently require each consumer to write and test custom rules.
+**Problem:** `RuleBasedGrader` is extensible, but simple common checks should not require each consumer to write and test custom code.
 
-**Proposed capability:** add a small, dependency-free set only where semantics can be specified precisely. Each grader must define normalization, type errors, score/pass behavior, and stable names. Avoid adding a broad "metric zoo" that duplicates application-specific rules.
+**Implemented:** `ContainsGrader`, `RegexGrader`, and `NumericToleranceGrader` provide dependency-free, deterministic checks with explicit type-mismatch behavior and documented score semantics. Regex patterns can be configured once or supplied in each case's expected value; numeric tolerance combines absolute and relative error bounds.
+
+**Remaining:** structured-field assertions and score composition should be designed separately so their expected-value contracts remain unambiguous when one run uses multiple graders. Avoid adding a broad "metric zoo" that duplicates application-specific rules.
+
+**Guardrail:** built-in graders must define normalization, type errors, pass/score behavior, and any untrusted-input limitations.
 
 ### P2 — Live budget guard
 

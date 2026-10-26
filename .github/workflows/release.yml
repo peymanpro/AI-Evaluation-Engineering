@@ -112,6 +112,7 @@ jobs:
           python examples/integrations.py
           python examples/promptfoo_release_workflow.py
           python examples/async_evaluation.py
+          python examples/deterministic_graders.py
 
       - name: Build and validate distributions
         if: steps.version.outputs.skip != 'true'

@@ -5,12 +5,6 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 ## Unreleased
 
 ### Added
-- Offline subgroup/slice analysis by tag, risk category, or an explicitly selected scalar case-metadata field, with per-grader summaries and a recorded-run CLI command.
-
-
-## Unreleased
-
-### Added
 - Bounded-concurrency asynchronous evaluation runner with stable suite-order results, shared synchronous graders, and fail-fast cancellation semantics.
 - Optional per-case async adapter deadlines with cancellation and explicit failure instead of an indefinitely blocked run.
 - Preflight suite/manifest validation and per-case output/grader contract checks to prevent inconsistent or non-finite evidence from entering a run.
@@ -19,6 +13,12 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Atomic checkpoints for synchronous and asynchronous runs, with strict suite/run-identity validation and resume of unfinished cases.
 - A provider-free `ai-eval` CLI for external-run schema/validation, decision-grade baseline/candidate comparisons, and post-run budget gates with shell-friendly exit codes.
 - Versioned evaluation-suite JSON interchange with atomic file I/O, strict validation, packaged schema, and `ai-eval validate-suite` / `ai-eval suite-schema` commands.
+- Offline subgroup/slice analysis by tag, risk category, or an explicitly selected scalar case-metadata field, with per-grader summaries and a recorded-run CLI command.
+- Dependency-free substring, regular-expression, and numeric-tolerance graders with explicit type handling, configurable targets, and deterministic pass/fail behavior.
+- Public package exports and tests for the new grader primitives.
+
+### Maintained
+- PyPI upload remains opt-in and is not triggered by normal branch or tag pushes while capabilities are in development.
 
 ## 0.2.0 - 2026-10-26
 

@@ -48,3 +48,5 @@ jobs:
         run: python examples/promptfoo_release_workflow.py
       - name: Async evaluation demo
         run: python examples/async_evaluation.py
+      - name: Deterministic graders demo
+        run: python examples/deterministic_graders.py

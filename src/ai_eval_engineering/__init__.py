@@ -30,6 +30,7 @@ from .failure_memory import (
     read_failure_memory,
     write_failure_memory,
 )
+from .graders import ContainsGrader, NumericToleranceGrader, RegexGrader
 from .integrations import (
     ContractAdapter,
     IntegrationSpec,
@@ -122,6 +123,7 @@ __all__ = [
     "CaseResult",
     "CheckpointError",
     "ConfidenceInterval",
+    "ContainsGrader",
     "ContractAdapter",
     "EvaluationCase",
     "EvaluationRubric",
@@ -142,12 +144,14 @@ __all__ = [
     "JudgeResult",
     "LabelCalibration",
     "MetricGateDecision",
+    "NumericToleranceGrader",
     "OnlineMetricContract",
     "OnlineObservation",
     "OpenAICompatibleJudge",
     "OpenAIJudgeGrader",
     "Outcome",
     "PersistentFailure",
+    "RegexGrader",
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
     "RubricDimension",
