@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 import re
-from copy import deepcopy
 from collections.abc import Callable, Iterable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal
 
