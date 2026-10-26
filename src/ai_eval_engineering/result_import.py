@@ -381,22 +381,34 @@ def _require_string(value: Any, location: str) -> str:
     return value
 
 
-def _validate_json_value(value: Any, location: str) -> None:
+def _validate_json_value(
+    value: Any,
+    location: str,
+    ancestors: set[int] | None = None,
+) -> None:
     if value is None or isinstance(value, (str, bool, int)):
         return
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError(f"{location} contains a non-finite number.")
         return
-    if isinstance(value, list):
-        for index, item in enumerate(value):
-            _validate_json_value(item, f"{location}[{index}]")
-        return
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise TypeError(f"{location} object keys must be strings.")
-            _validate_json_value(item, f"{location}.{key}")
+    if isinstance(value, (list, dict)):
+        active_ancestors = ancestors if ancestors is not None else set()
+        identity = id(value)
+        if identity in active_ancestors:
+            raise ValueError(f"{location} contains a circular reference.")
+        active_ancestors.add(identity)
+        try:
+            if isinstance(value, list):
+                for index, item in enumerate(value):
+                    _validate_json_value(item, f"{location}[{index}]", active_ancestors)
+            else:
+                for key, item in value.items():
+                    if not isinstance(key, str):
+                        raise TypeError(f"{location} object keys must be strings.")
+                    _validate_json_value(item, f"{location}.{key}", active_ancestors)
+        finally:
+            active_ancestors.remove(identity)
         return
     raise TypeError(f"{location} contains a non-JSON value of type {type(value).__name__}.")
 
