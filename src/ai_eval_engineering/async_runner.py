@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import math
 from collections.abc import Awaitable
+from pathlib import Path
 from typing import Protocol, cast
 
 from .checkpoint import load_run_checkpoint, save_run_checkpoint
