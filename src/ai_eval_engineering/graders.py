@@ -67,6 +67,13 @@ class ContainsGrader:
                 score=0.0,
                 details="contains grader requires string expected and actual values",
             )
+        if not expected:
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="expected substring must not be empty",
+            )
         left, right = (actual, expected) if self.case_sensitive else (
             actual.casefold(),
             expected.casefold(),
@@ -125,6 +132,13 @@ class RegexGrader:
                 score=0.0,
                 details="regex grader requires string pattern and actual values",
             )
+        if not pattern:
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="regular-expression pattern must not be empty",
+            )
         try:
             compiled = self._compiled_pattern or self._compile(pattern)
         except ValueError:
@@ -179,6 +193,13 @@ class NumericToleranceGrader:
             )
         difference = abs(actual - expected)
         allowed_error = self.abs_tol + self.rel_tol * abs(expected)
+        if not math.isfinite(difference) or not math.isfinite(allowed_error):
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="numeric tolerance comparison exceeded the finite numeric range",
+            )
         passed = difference <= allowed_error
         return GraderResult(
             grader=self.name,
