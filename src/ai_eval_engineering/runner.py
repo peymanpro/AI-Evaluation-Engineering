@@ -46,6 +46,28 @@ class Grader(Protocol):
         ...
 
 
+class BudgetedSystemAdapter(Protocol):
+    """A system adapter that enforces a per-call USD ceiling before provider calls."""
+
+    def run_with_budget(
+        self, case: EvaluationCase, *, max_cost_usd: float
+    ) -> SystemOutput:
+        ...
+
+
+class BudgetedGrader(Protocol):
+    """A billable grader that enforces and reports its cost within the supplied ceiling."""
+
+    def grade_with_budget(
+        self,
+        case: EvaluationCase,
+        output: SystemOutput,
+        *,
+        max_cost_usd: float,
+    ) -> GraderResult:
+        ...
+
+
 def configuration_hash(configuration: JsonObject) -> str:
     encoded = json.dumps(configuration, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
