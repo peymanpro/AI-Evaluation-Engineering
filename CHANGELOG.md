@@ -11,6 +11,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 - Native-async OpenAI-compatible judge and grader that can run inside bounded concurrent evaluations without blocking on a synchronous model SDK call.
 - Post-run budget assessment for total/per-case measured cost, token usage, and per-case latency, with explicit exceeded, incomplete-evidence, and invalid-evidence outcomes.
 - Atomic checkpoints for synchronous and asynchronous runs, with strict suite/run-identity validation and resume of unfinished cases.
+- A provider-free `ai-eval` CLI for external-run schema/validation, decision-grade baseline/candidate comparisons, and post-run budget gates with shell-friendly exit codes.
 
 ## 0.2.0 - 2026-10-26
 

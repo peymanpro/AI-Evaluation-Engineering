@@ -9,6 +9,8 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
+- atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
+- post-run budget assessments for recorded cost, token usage, and per-case latency;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
@@ -17,6 +19,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - explicit baselines and deterministic regression gates;
 - quality/cost and quality/latency trade-off frontiers;
 - machine-readable, human-readable, and auditable evidence packages;
+- a provider-free CLI for validating recorded runs, comparing baseline/candidate revisions, and enforcing post-run budgets;
 - integration adapters for three existing portfolio projects;
 - CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
@@ -58,6 +61,38 @@ The framework preserves raw case-level observations so aggregate claims can be i
 
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
+
+## Command-line interface
+
+The `ai-eval` command works with saved external-run-v1 JSON files and makes no provider calls.
+It complements `ai-eval-demo`, which remains a deterministic example that generates a demo report.
+
+```bash
+# Inspect the available commands and print the packaged JSON Schema
+ai-eval --help
+ai-eval schema > external-run-v1.schema.json
+
+# Validate a recorded run file
+ai-eval validate-run run.json
+
+# Compare a baseline and candidate using the grader's numeric score
+ai-eval compare baseline.json candidate.json \
+  --metric quality \
+  --direction higher_is_better \
+  --max-allowed-regression 0.02 \
+  --min-cases 30
+
+# Enforce recorded cost, token, and latency limits in CI
+ai-eval budget candidate.json \
+  --max-total-cost-usd 2.50 \
+  --max-total-tokens 50000 \
+  --max-case-latency-ms 15000
+```
+
+`compare` and `budget` print machine-readable JSON and return exit code `0` only for a passing
+gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `budget` returns `1`
+for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
+returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
 
 ## Input contract validation
 

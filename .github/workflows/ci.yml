@@ -25,6 +25,10 @@ jobs:
         run: ruff check .
       - name: Mypy
         run: mypy src
+      - name: Evaluation CLI help
+        run: ai-eval --help
+      - name: Evaluation CLI schema
+        run: ai-eval schema > /tmp/external-run-v1.schema.json && python -c 'import json; schema=json.load(open("/tmp/external-run-v1.schema.json", encoding="utf-8")); assert schema["properties"]["schema_version"]["const"] == 1'
       - name: Core demo
         run: ai-eval-demo
       - name: Online evaluation demo
