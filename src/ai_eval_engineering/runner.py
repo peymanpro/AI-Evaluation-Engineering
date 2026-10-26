@@ -363,7 +363,7 @@ class EvaluationRunner:
                     grader_results.append(grader_result)
                     continue
 
-                remaining_case_budget = max(0.0, allocation - case_spent)
+                remaining_case_budget = round(max(0.0, allocation - case_spent), 12)
                 if remaining_case_budget <= 0.0:
                     controller.stop(
                         "BUDGET_LIMIT_REACHED",
