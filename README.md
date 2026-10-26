@@ -98,6 +98,16 @@ gate. `compare` returns `1` for `FAIL`, `INCONCLUSIVE`, or `INVALID_EVIDENCE`; `
 for `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, or `INVALID_EVIDENCE`. Invalid input or configuration
 returns `2`. The CLI uses the same Python APIs and versioned interchange schema as the library.
 
+## Versioned run interchange
+
+The `external-run-v1` format rejects unknown fields at its structured contract boundaries (the
+root envelope, manifest, case result, case definition, system output, and grader record) rather
+than silently dropping data during import/export. Application-owned JSON objects inside case
+inputs, expected values, outputs, metadata, configuration, environment, traces, and grader metadata
+remain extensible. Changes to the envelope itself must be coordinated through an explicit schema
+version instead of relying on unrecognized fields being ignored. Programmatic calls to
+`import_run_payload` also reject cyclic Python containers, which cannot be represented in JSON.
+
 ## Versioned evaluation suites
 
 Keep test cases in a reusable, reviewable JSON file rather than rebuilding every suite in Python.

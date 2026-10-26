@@ -73,6 +73,10 @@ def test_packaged_json_schema_matches_repository_contract() -> None:
     assert schema == repository_schema
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
     assert schema["properties"]["schema_version"]["const"] == EXTERNAL_RUN_SCHEMA_VERSION
+    assert schema["additionalProperties"] is False
+    for name in ("manifest", "case", "output", "grader", "caseResult"):
+        assert schema["$defs"][name]["additionalProperties"] is False
+    assert schema["$defs"]["jsonObject"]["additionalProperties"]["$ref"] == "#/$defs/jsonValue"
 
 
 def test_import_and_export_round_trip_preserves_domain_data() -> None:
@@ -88,6 +92,60 @@ def test_import_and_export_round_trip_preserves_domain_data() -> None:
     assert run.cases[0].output.latency_ms == 12.5
     assert run.cases[0].graders[0].passed
     assert exported == original
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["root", "manifest", "case_result", "case", "output", "grader"],
+)
+def test_unknown_fields_are_rejected_at_contract_boundaries(location: str) -> None:
+    data = payload()
+    if location == "root":
+        data["future_field"] = "must-not-be-dropped"
+    elif location == "manifest":
+        data["manifest"]["future_field"] = "must-not-be-dropped"
+    elif location == "case_result":
+        data["cases"][0]["future_field"] = "must-not-be-dropped"
+    elif location == "case":
+        data["cases"][0]["case"]["future_field"] = "must-not-be-dropped"
+    elif location == "output":
+        data["cases"][0]["output"]["future_field"] = "must-not-be-dropped"
+    else:
+        data["cases"][0]["graders"][0]["future_field"] = "must-not-be-dropped"
+
+    with pytest.raises(ValueError, match="unsupported fields: future_field"):
+        import_run_payload(data)
+
+
+def test_free_form_json_objects_remain_extensible_and_round_trip() -> None:
+    data = payload()
+    data["manifest"]["configuration"]["provider_extension"] = "kept"
+    data["manifest"]["environment"]["runtime_extension"] = {"enabled": True}
+    data["cases"][0]["case"]["input"]["client_extension"] = {"nested": [1, 2]}
+    data["cases"][0]["case"]["metadata"]["annotation"] = "kept"
+    data["cases"][0]["output"]["output"]["trace_extension"] = "kept"
+    data["cases"][0]["output"]["trace"][0]["vendor_event_id"] = "evt-1"
+    data["cases"][0]["graders"][0]["metadata"]["grader_extension"] = "kept"
+
+    run = import_run_payload(data)
+
+    assert export_run_payload(run) == data
+
+
+@pytest.mark.parametrize("cycle_kind", ["dict", "list"])
+def test_circular_python_values_are_rejected_as_invalid_json(cycle_kind: str) -> None:
+    data = payload()
+    if cycle_kind == "dict":
+        cycle: dict[str, Any] | list[Any] = {}
+        cycle["self"] = cycle
+    else:
+        cycle = []
+        cycle.append(cycle)
+
+    data["manifest"]["configuration"]["cycle"] = cycle
+
+    with pytest.raises(ValueError, match="circular reference"):
+        import_run_payload(data)
 
 
 def test_json_file_round_trip_and_nested_destination(tmp_path: Path) -> None:
