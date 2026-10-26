@@ -1,6 +1,7 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
+from .async_runner import AsyncEvaluationRunner, AsyncSystemAdapter
 from .domain import (
     AggregatedResult,
     CaseResult,
@@ -95,6 +96,8 @@ __all__ = [
     "AgentEvaluationResult",
     "AgentSuccessCriteria",
     "AggregatedResult",
+    "AsyncEvaluationRunner",
+    "AsyncSystemAdapter",
     "CalibrationReport",
     "CaseResult",
     "ConfidenceInterval",

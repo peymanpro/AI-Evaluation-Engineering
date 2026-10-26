@@ -4,7 +4,7 @@ The V1.1 evaluation path is:
 
 System Under Test → Evaluation Adapter → Case Execution → Graders → Statistical Analysis → Regression Gate → Evidence Package.
 
-The framework separates case definition from execution, grading, statistical interpretation, reporting, and release gating.
+The framework separates case definition from execution, grading, statistical interpretation, reporting, and release gating. Both synchronous and asynchronous runners use the same typed cases, outputs, graders, and run manifests. The async runner bounds in-flight system calls and preserves suite order in the final results.
 
 ## Agent path
 
