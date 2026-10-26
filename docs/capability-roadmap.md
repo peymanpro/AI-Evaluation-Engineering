@@ -26,13 +26,15 @@ These are substantive foundations. The main risk is not the absence of a long fe
 
 **Acceptance criteria:** deterministic grouping; no silent dropping of unclassified cases; explicit overlap semantics for tags; per-grader breakdowns; small groups remain visible; tests for malformed metadata; no unsupported claims of statistical significance.
 
-### P1 — Explicit transient-failure retry policy
+### P1 — Explicit transient-failure retry policy (implemented)
 
-**Problem:** A transient API/network failure currently fails the run. Checkpoints make manual resume safe, but large runs still need manual intervention and retry rules are easy to implement inconsistently.
+**Problem:** A transient API/network failure should not always force a large evaluation to be restarted manually, but retries must not accidentally repeat permanent failures or grading errors.
 
-**Proposed capability:** a shared, opt-in retry policy for system-adapter calls, with bounded attempts, exponential backoff, and a caller-supplied retry predicate. Do not retry graders or schema/contract validation errors. Keep zero retries as the default, preserve checkpoint semantics, and document that a timeout or transport exception can occur after a provider processed and billed a request.
+**Capability:** both sync and async runners accept an opt-in `RetryPolicy` with a total-attempt budget, configured exception classes, capped exponential backoff, and an optional `RetryEvent` callback. Adapter attempts can be retried; output validation and graders remain outside the retry boundary. The retry policy is recorded in run-manifest configuration and must match the policy supplied when a run is executed or resumed.
 
-**Guardrail:** never retry all exceptions by default, and never imply that retrying a request is cost-free or idempotent.
+**Acceptance criteria:** no retries by default; bounded attempts/delays; explicit type configuration; events without raw exception messages; timeout handling per async adapter attempt; tests for exhausted budgets, non-retryable exceptions, grader failures, invalid outputs, and manifest identity.
+
+**Remaining limitations:** no jitter, provider-specific rate-limit interpretation, distributed coordination, or idempotency guarantee. A request can be processed and billed before a client observes a timeout/connection error.
 
 ### P1 — Common deterministic grader primitives (partially implemented)
 
