@@ -1,12 +1,20 @@
-"""Post-run cost, token, and latency budget assessment."""
+"""Observed and reservation-based budget controls for AI evaluation runs."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Literal
 
-from .domain import CaseResult, EvaluationCase, EvaluationRun, GraderResult, SystemOutput
+from .domain import (
+    CaseResult,
+    EvaluationCase,
+    EvaluationRun,
+    GraderResult,
+    RunMetadata,
+    SystemOutput,
+)
 
 BudgetStatus = Literal[
     "WITHIN_BUDGET",
@@ -370,3 +378,562 @@ def _read_case_token_usage(
             )
 
     return (sum(totals), False, None) if totals else (None, False, None)
+
+
+LiveBudgetStatus = Literal[
+    "COMPLETED",
+    "BUDGET_LIMIT_REACHED",
+    "INCOMPLETE_BUDGET_EVIDENCE",
+    "INVALID_BUDGET_EVIDENCE",
+]
+
+
+@dataclass(frozen=True)
+class BudgetedRunResult:
+    """Result of a run that may stop before every suite case is executed.
+
+    Partial results deliberately use a distinct type rather than EvaluationRun,
+    whose contract represents a completed suite.
+    """
+
+    manifest: RunMetadata
+    completed_cases: tuple[CaseResult, ...]
+    pending_case_ids: tuple[str, ...]
+    status: LiveBudgetStatus
+    known_cost_usd: float
+    known_tokens: int
+    stop_reason: str | None
+
+    @property
+    def all_cases_completed(self) -> bool:
+        """Whether every case in the suite has a recorded CaseResult."""
+        return not self.pending_case_ids
+
+    @property
+    def within_budget(self) -> bool:
+        """True only when the run completed without triggering a live guard."""
+        return self.status == "COMPLETED" and self.all_cases_completed
+
+
+class _LiveBudgetGuard:
+    """Track measurements as they become available and gate new case starts."""
+
+    def __init__(self, policy: RunBudgetPolicy) -> None:
+        if not isinstance(policy, RunBudgetPolicy):
+            raise TypeError("policy must be a RunBudgetPolicy.")
+        self.policy = policy
+        self._known_cost_usd = 0.0
+        self._known_tokens = 0
+        self._seen_output_ids: set[str] = set()
+        self._seen_usage_ids: set[str] = set()
+        self._stop_status: LiveBudgetStatus | None = None
+        self._stop_reason: str | None = None
+
+    @property
+    def known_cost_usd(self) -> float:
+        return self._known_cost_usd
+
+    @property
+    def known_tokens(self) -> int:
+        return self._known_tokens
+
+    @property
+    def stop_status(self) -> LiveBudgetStatus | None:
+        return self._stop_status
+
+    @property
+    def stop_reason(self) -> str | None:
+        return self._stop_reason
+
+    def can_start_case(self) -> bool:
+        """Return false once a configured limit is reached or evidence is missing."""
+        if self._stop_status is not None:
+            return False
+        if (
+            self.policy.max_total_cost_usd is not None
+            and self._known_cost_usd >= float(self.policy.max_total_cost_usd)
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative cost {self._known_cost_usd:.8g} USD has reached "
+                    f"the total cost cap {self.policy.max_total_cost_usd:.8g} USD"
+                ),
+            )
+        if (
+            self.policy.max_total_tokens is not None
+            and self._known_tokens >= self.policy.max_total_tokens
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative tokens {self._known_tokens} have reached "
+                    f"the total token cap {self.policy.max_total_tokens}"
+                ),
+            )
+        return self._stop_status is None
+
+    def observe_output(self, case_id: str, output: SystemOutput) -> None:
+        """Record cost and latency immediately after a validated adapter response."""
+        if case_id in self._seen_output_ids:
+            return
+        self._seen_output_ids.add(case_id)
+
+        cost_relevant = (
+            self.policy.max_total_cost_usd is not None
+            or self.policy.max_case_cost_usd is not None
+        )
+        cost_issues: list[str] = []
+        cost = _read_non_negative_measurement(
+            output.cost_usd, "cost_usd", case_id, cost_issues
+        )
+        if cost is not None:
+            self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
+            if (
+                self.policy.max_case_cost_usd is not None
+                and cost > float(self.policy.max_case_cost_usd)
+            ):
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"case {case_id!r} cost {cost:.8g} USD exceeded per-case cap "
+                        f"{self.policy.max_case_cost_usd:.8g} USD"
+                    ),
+                )
+            if (
+                self.policy.max_total_cost_usd is not None
+                and self._known_cost_usd >= float(self.policy.max_total_cost_usd)
+            ):
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"known cumulative cost {self._known_cost_usd:.8g} USD reached "
+                        f"the total cost cap {self.policy.max_total_cost_usd:.8g} USD"
+                    ),
+                )
+        elif cost_relevant:
+            if output.cost_usd is None:
+                self._stop(
+                    "INCOMPLETE_BUDGET_EVIDENCE",
+                    f"case {case_id!r} has no cost measurement required by the live budget policy",
+                )
+            else:
+                self._stop(
+                    "INVALID_BUDGET_EVIDENCE",
+                    cost_issues[0] if cost_issues else f"case {case_id!r} has invalid cost evidence",
+                )
+
+        latency_limit = self.policy.max_case_latency_ms
+        if latency_limit is not None:
+            latency_issues: list[str] = []
+            latency = _read_non_negative_measurement(
+                output.latency_ms, "latency_ms", case_id, latency_issues
+            )
+            if latency is None:
+                if output.latency_ms is None:
+                    self._stop(
+                        "INCOMPLETE_BUDGET_EVIDENCE",
+                        f"case {case_id!r} has no latency measurement required by the live budget policy",
+                    )
+                else:
+                    self._stop(
+                        "INVALID_BUDGET_EVIDENCE",
+                        latency_issues[0]
+                        if latency_issues
+                        else f"case {case_id!r} has invalid latency evidence",
+                    )
+            elif latency > latency_limit:
+                self._stop(
+                    "BUDGET_LIMIT_REACHED",
+                    (
+                        f"case {case_id!r} latency {latency:.8g} ms exceeded per-case cap "
+                        f"{latency_limit:.8g} ms"
+                    ),
+                )
+
+    def observe_graders(self, result: CaseResult) -> None:
+        """Record grader usage after grading so token limits can stop later cases."""
+        case_id = result.case.id
+        if case_id in self._seen_usage_ids:
+            return
+        self._seen_usage_ids.add(case_id)
+        tokens, invalid, issue = _read_case_token_usage(result, case_id)
+        if tokens is None:
+            if self.policy.max_total_tokens is None:
+                return
+            if invalid:
+                self._stop(
+                    "INVALID_BUDGET_EVIDENCE",
+                    issue or f"case {case_id!r} has invalid token usage evidence",
+                )
+            else:
+                self._stop(
+                    "INCOMPLETE_BUDGET_EVIDENCE",
+                    issue or f"case {case_id!r} has no token usage required by the live budget policy",
+                )
+            return
+
+        self._known_tokens += tokens
+        if (
+            self._stop_status is None
+            and self.policy.max_total_tokens is not None
+            and self._known_tokens >= self.policy.max_total_tokens
+        ):
+            self._stop(
+                "BUDGET_LIMIT_REACHED",
+                (
+                    f"known cumulative tokens {self._known_tokens} reached "
+                    f"the total token cap {self.policy.max_total_tokens}"
+                ),
+            )
+
+    def observe_result(self, result: CaseResult) -> None:
+        """Account for an already completed result, such as a checkpoint entry."""
+        self.observe_output(result.case.id, result.output)
+        self.observe_graders(result)
+
+    def finish(
+        self,
+        pending_case_ids: tuple[str, ...],
+        *,
+        completed_case_count: int,
+    ) -> LiveBudgetStatus:
+        """Finalize the status without treating an empty suite as budget evidence."""
+        if self._stop_status is not None:
+            return self._stop_status
+        if completed_case_count == 0:
+            self._stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the suite produced no completed cases; budget compliance cannot be established",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
+        if pending_case_ids:
+            self._stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the run ended with cases not executed and no recorded budget stop reason",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
+        return "COMPLETED"
+
+    def _stop(self, status: LiveBudgetStatus, reason: str) -> None:
+        """Keep the strongest conclusion independent of async response ordering."""
+        priority: dict[LiveBudgetStatus, int] = {
+            "COMPLETED": 0,
+            "INCOMPLETE_BUDGET_EVIDENCE": 1,
+            "BUDGET_LIMIT_REACHED": 2,
+            "INVALID_BUDGET_EVIDENCE": 3,
+        }
+        if self._stop_status is None or priority[status] > priority[self._stop_status]:
+            self._stop_status = status
+            self._stop_reason = reason
+
+
+ReservedBudgetStatus = Literal[
+    "COMPLETED",
+    "BUDGET_LIMIT_REACHED",
+    "INCOMPLETE_BUDGET_EVIDENCE",
+    "INVALID_BUDGET_EVIDENCE",
+    "REQUEST_CAP_VIOLATED",
+]
+
+
+@dataclass(frozen=True)
+class ReservedBudgetPolicy:
+    """Admission limits for adapters that can enforce a per-case cost ceiling.
+
+    `max_total_cost_usd` caps the sum of measured charges plus reservations
+    for in-flight cases. `max_case_cost_usd` caps the complete case, including
+    the system adapter and every cost-bearing grader.
+    """
+
+    max_total_cost_usd: float
+    max_case_cost_usd: float
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("max_total_cost_usd", self.max_total_cost_usd),
+            ("max_case_cost_usd", self.max_case_cost_usd),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"{name} must be numeric.")
+            try:
+                numeric_value = float(value)
+            except OverflowError as exc:
+                raise ValueError(f"{name} must be finite and non-negative.") from exc
+            if not math.isfinite(numeric_value) or numeric_value < 0:
+                raise ValueError(f"{name} must be finite and non-negative.")
+        if self.max_case_cost_usd <= 0:
+            raise ValueError("max_case_cost_usd must be greater than zero.")
+
+
+@dataclass(frozen=True)
+class ReservedBudgetRunResult:
+    """Outcome of reservation-based execution with explicit unspent reservations."""
+
+    manifest: RunMetadata
+    completed_cases: tuple[CaseResult, ...]
+    pending_case_ids: tuple[str, ...]
+    incomplete_case_ids: tuple[str, ...]
+    unresolved_cost_case_ids: tuple[str, ...]
+    status: ReservedBudgetStatus
+    known_cost_usd: float
+    reserved_cost_usd: float
+    stop_reason: str | None
+
+    @property
+    def all_cases_completed(self) -> bool:
+        """Whether every suite case has a complete CaseResult."""
+        return not self.pending_case_ids
+
+    @property
+    def not_started_case_ids(self) -> tuple[str, ...]:
+        """Cases still pending whose billable execution has not started."""
+        incomplete = set(self.incomplete_case_ids)
+        return tuple(case_id for case_id in self.pending_case_ids if case_id not in incomplete)
+
+    @property
+    def within_budget(self) -> bool:
+        """True only when the whole suite completed without evidence or cap violations."""
+        return self.status == "COMPLETED" and self.all_cases_completed
+
+
+class RequestBudgetExceeded(RuntimeError):
+    """A budget-aware component declined a request before sending it to a provider."""
+
+
+class _ReservedBudgetController:
+    """Reserve per-case amounts using decimal arithmetic before billable calls."""
+
+    def __init__(self, policy: ReservedBudgetPolicy) -> None:
+        self.policy = policy
+        self._total_cap = Decimal(str(policy.max_total_cost_usd))
+        self._case_cap = Decimal(str(policy.max_case_cost_usd))
+        self._known_cost_usd = Decimal(0)
+        self._reserved_cost_usd = Decimal(0)
+        self._unresolved_cost_case_ids: set[str] = set()
+        self._stop_status: ReservedBudgetStatus | None = None
+        self._stop_reason: str | None = None
+
+    @property
+    def known_cost_usd(self) -> float:
+        return float(self._known_cost_usd)
+
+    @property
+    def reserved_cost_usd(self) -> float:
+        return float(self._reserved_cost_usd)
+
+    @property
+    def unresolved_cost_case_ids(self) -> frozenset[str]:
+        """Cases whose actual monetary cost could not be reconciled."""
+        return frozenset(self._unresolved_cost_case_ids)
+
+    @property
+    def stop_status(self) -> ReservedBudgetStatus | None:
+        return self._stop_status
+
+    @property
+    def stop_reason(self) -> str | None:
+        return self._stop_reason
+
+    @property
+    def remaining_usd(self) -> float:
+        return float(self._remaining_decimal())
+
+    def _remaining_decimal(self) -> Decimal:
+        return max(
+            Decimal(0),
+            self._total_cap - self._known_cost_usd - self._reserved_cost_usd,
+        )
+
+    @staticmethod
+    def _decimal_amount(value: float) -> Decimal:
+        """Convert API numbers by their decimal spelling, avoiding binary-float drift."""
+        return Decimal(str(value))
+
+    def reserve_case(self) -> float | None:
+        """Atomically reserve a case ceiling, accounting for every in-flight case."""
+        if self._stop_status is not None:
+            return None
+        remaining = self._remaining_decimal()
+        if remaining <= 0:
+            # Active cases already own reservations. Let those bounded requests
+            # finish; report the exhausted budget after their batch settles.
+            if self._reserved_cost_usd <= 0:
+                self.stop(
+                    "BUDGET_LIMIT_REACHED",
+                    f"no unreserved budget remains under total cap {self.policy.max_total_cost_usd:.8g} USD",
+                )
+            return None
+        allocation = min(self._case_cap, remaining)
+        self._reserved_cost_usd += allocation
+        return float(allocation)
+
+    def record_component_cost(
+        self,
+        cost_value: Any,
+        *,
+        case_id: str,
+        source: str,
+        allocation_usd: float,
+        case_spent_usd: float,
+    ) -> float | None:
+        """Settle one measured system/grader charge against the held reservation."""
+        if cost_value is None:
+            self._unresolved_cost_case_ids.add(case_id)
+            self.stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                f"case {case_id!r} {source} returned no cost measurement; its remaining reservation is retained",
+            )
+            return None
+        issues: list[str] = []
+        cost = _read_non_negative_measurement(cost_value, "cost_usd", case_id, issues)
+        if cost is None:
+            self._unresolved_cost_case_ids.add(case_id)
+            self.stop(
+                "INVALID_BUDGET_EVIDENCE",
+                issues[0] if issues else f"case {case_id!r} {source} cost evidence is invalid",
+            )
+            return None
+
+        cost_decimal = self._decimal_amount(cost_value)
+        allocation = self._decimal_amount(allocation_usd)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        unspent_case_reservation = max(Decimal(0), allocation - case_spent)
+        consumed_reservation = min(unspent_case_reservation, cost_decimal)
+        self._reserved_cost_usd = max(
+            Decimal(0), self._reserved_cost_usd - consumed_reservation
+        )
+        self._known_cost_usd += cost_decimal
+        if cost_decimal > unspent_case_reservation:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"case {case_id!r} {source} charged {cost:.8g} USD when only "
+                    f"{float(unspent_case_reservation):.8g} USD remained in its reservation"
+                ),
+            )
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"measured cost {float(self._known_cost_usd):.8g} USD exceeded "
+                    f"total cap {self.policy.max_total_cost_usd:.8g} USD"
+                ),
+            )
+        return cost
+
+    def release_case(self, allocation_usd: float, case_spent_usd: float) -> None:
+        """Release unused reservation when all costs for a case are reconciled."""
+        allocation = self._decimal_amount(allocation_usd)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        remainder = max(Decimal(0), allocation - case_spent)
+        self._reserved_cost_usd = max(
+            Decimal(0), self._reserved_cost_usd - remainder
+        )
+
+    def add_existing_cost(self, cost: float, *, case_id: str, source: str) -> None:
+        """Account for measured charges already present in a checkpoint."""
+        if cost < 0 or not math.isfinite(cost):
+            self.stop(
+                "INVALID_BUDGET_EVIDENCE",
+                f"case {case_id!r} {source} has invalid recorded cost",
+            )
+            return
+        self._known_cost_usd += self._decimal_amount(cost)
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                f"checkpointed cost exceeds total cap {self.policy.max_total_cost_usd:.8g} USD",
+            )
+
+    def record_existing_component_cost(
+        self,
+        cost_value: Any,
+        *,
+        case_id: str,
+        source: str,
+        case_spent_usd: float,
+    ) -> float | None:
+        """Account for an existing checkpoint charge without a live reservation."""
+        if cost_value is None:
+            self._unresolved_cost_case_ids.add(case_id)
+            self.stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                f"checkpoint case {case_id!r} {source} has no cost measurement",
+            )
+            return None
+        issues: list[str] = []
+        cost = _read_non_negative_measurement(cost_value, "cost_usd", case_id, issues)
+        if cost is None:
+            self._unresolved_cost_case_ids.add(case_id)
+            self.stop(
+                "INVALID_BUDGET_EVIDENCE",
+                issues[0] if issues else f"checkpoint case {case_id!r} has invalid cost",
+            )
+            return None
+
+        cost_decimal = self._decimal_amount(cost_value)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        self._known_cost_usd += cost_decimal
+        case_total = case_spent + cost_decimal
+        if case_total > self._case_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"checkpoint case {case_id!r} has measured cost {float(case_total):.8g} USD "
+                    f"above its case cap {self.policy.max_case_cost_usd:.8g} USD"
+                ),
+            )
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"checkpointed cost {float(self._known_cost_usd):.8g} USD exceeds total cap "
+                    f"{self.policy.max_total_cost_usd:.8g} USD"
+                ),
+            )
+        return cost
+
+    def stop(self, status: ReservedBudgetStatus, reason: str) -> None:
+        """Keep the strongest evidence-based conclusion regardless of async timing."""
+        priority: dict[ReservedBudgetStatus, int] = {
+            "COMPLETED": 0,
+            "BUDGET_LIMIT_REACHED": 1,
+            # Unknown actual spend must not be hidden by another concurrent
+            # case independently reaching the scheduling threshold.
+            "INCOMPLETE_BUDGET_EVIDENCE": 2,
+            "INVALID_BUDGET_EVIDENCE": 3,
+            "REQUEST_CAP_VIOLATED": 4,
+        }
+        if self._stop_status is None or priority[status] > priority[self._stop_status]:
+            self._stop_status = status
+            self._stop_reason = reason
+
+    def finish(
+        self,
+        *,
+        pending_case_ids: tuple[str, ...],
+        completed_case_count: int,
+    ) -> ReservedBudgetStatus:
+        if self._stop_status is not None:
+            return self._stop_status
+        if completed_case_count == 0:
+            self.stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the suite produced no completed cases; budget compliance cannot be established",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
+        if pending_case_ids:
+            self.stop(
+                "INCOMPLETE_BUDGET_EVIDENCE",
+                "the run ended with cases not completed and no recorded budget stop reason",
+            )
+            return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                "measured cost exceeded the configured total cap",
+            )
+            return self._stop_status or "REQUEST_CAP_VIOLATED"
+        return "COMPLETED"
+

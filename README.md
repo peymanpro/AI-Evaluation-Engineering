@@ -405,9 +405,92 @@ The status is one of `WITHIN_BUDGET`, `BUDGET_EXCEEDED`, `INCOMPLETE_EVIDENCE`, 
 data that a case did not record, the result is incomplete unless a known measurement already proves
 the budget was exceeded. Known token counts from multiple graders are summed per case.
 
-This is a post-run budget assessment, not a live spend limiter: it cannot stop a request before a
-provider charges for it. Costs are not inferred from token counts because provider/model pricing
-varies; adapters must record the actual cost they can measure.
+This is a post-run assessment of recorded measurements. It cannot stop a request already sent
+to a provider, and costs are not inferred from tokens because provider/model pricing varies; adapters
+must record the actual cost they can measure.
+
+For opt-in live scheduling control, use `run_budgeted` on either runner:
+
+```python
+from ai_eval_engineering import RunBudgetPolicy
+
+budgeted = runner.run_budgeted(
+    suite,
+    manifest,
+    policy=RunBudgetPolicy(max_total_cost_usd=2.50),
+)
+
+print(budgeted.status)
+print(budgeted.known_cost_usd)
+print(budgeted.pending_case_ids)
+print(budgeted.stop_reason)
+```
+
+For asynchronous execution, call `await async_runner.run_budgeted(..., policy=policy)`. A
+`BudgetedRunResult` is intentionally different from `EvaluationRun`: it identifies completed cases
+and cases not started when the guard stopped work. The guard uses measured `SystemOutput.cost_usd`,
+per-case `latency_ms`, and grader `metadata["usage"]` when the corresponding limit is configured.
+If required usage evidence is missing or malformed, it stops scheduling further cases instead of
+assuming zero usage. Token usage becomes known after grading, so the current case's grader calls may
+already have incurred cost.
+
+The asynchronous observed-budget runner starts cases in batches up to `max_concurrency` and waits
+for every case in the current batch to finish before scheduling another batch. Because ordinary adapters
+may not declare an enforceable per-request ceiling, this mode remains an observed-usage guard rather than
+a hard admission-control contract.
+
+### Reserved budget execution
+
+For components that can enforce an explicit request cost ceiling, use the stricter
+`run_reserved_budgeted` path:
+
+```python
+from ai_eval_engineering import ReservedBudgetPolicy
+
+result = runner.run_reserved_budgeted(
+    suite,
+    manifest,
+    policy=ReservedBudgetPolicy(
+        max_total_cost_usd=2.50,
+        max_case_cost_usd=0.50,
+    ),
+)
+print(result.status)
+print(result.known_cost_usd)
+print(result.reserved_cost_usd)
+print(result.pending_case_ids)
+print(result.incomplete_case_ids)
+print(result.unresolved_cost_case_ids)
+print(result.not_started_case_ids)
+```
+
+This strict mode requires the system adapter to implement
+`run_with_budget(case, *, max_cost_usd)`. It must enforce the supplied ceiling *before* submitting
+provider requests and return the actual aggregate cost in `SystemOutput.cost_usd`. A component that can
+quote a request but knows it cannot fit the allowance should raise `RequestBudgetExceeded` before
+sending it. A billable grader must similarly implement
+`grade_with_budget(case, output, *, max_cost_usd)` and report its aggregate actual cost in
+`GraderResult.metadata["cost_usd"]`. Deterministic graders built into the package explicitly declare
+`budget_cost_free = True`; custom graders may use that marker only when they truly make no billable
+calls. Strict mode rejects an unbounded component before any case starts and disables retries.
+
+The run reserves up to the configured per-case ceiling before starting each case, including the cost
+envelope shared by all graders. The asynchronous runner reserves every case in a batch before launching
+any of them; known spend plus outstanding reservations therefore stays within the configured total
+**provided every budget-aware component honors its per-call ceiling**. If the global remainder is below
+the per-case ceiling, the last reservation is smaller, and the adapter/grader must refuse any call that
+cannot fit. If a component reports charges above its allowance, the result is
+`REQUEST_CAP_VIOLATED`; already incurred charges cannot be undone. If a component returns no cost
+measurement, its remaining reservation is retained and no new cases are admitted. `pending_case_ids`
+lists all cases without a complete `CaseResult`; `incomplete_case_ids` identifies cases whose request
+execution started but whose full system-plus-grader result did not complete, while
+`not_started_case_ids` identifies cases that never reached a billable request.
+
+This contract cannot force an arbitrary adapter or external billing platform to obey a ceiling. For an
+actual provider, the adapter must translate the allowance into enforceable request constraints or refuse
+the call. Also configure provider/organization hard spend limits as a second line of defense: provider
+billing enforcement may be delayed, so no client library can promise an exact universal dollar ceiling
+when the underlying provider itself allows accounting overshoot.
 
 ## Offline slice analysis
 

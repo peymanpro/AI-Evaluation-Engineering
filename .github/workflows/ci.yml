@@ -36,6 +36,8 @@ jobs:
           ai-eval validate-suite examples/suites/support-smoke-v1.json
       - name: Core demo
         run: ai-eval-demo
+      - name: Reserved budget demo
+        run: python examples/reserved_budget.py
       - name: Online evaluation demo
         run: python examples/online_experiment.py
       - name: Security regression demo

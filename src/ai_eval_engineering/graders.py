@@ -18,6 +18,10 @@ def _normalize(value: Any) -> Any:
 
 
 class ExactMatchGrader:
+    """Compare expected and actual values without external calls."""
+
+    budget_cost_free = True
+
     def __init__(self, name: str = "exact_match", normalize: bool = True) -> None:
         self.name = name
         self.normalize = normalize
@@ -39,6 +43,8 @@ class ExactMatchGrader:
 
 class ContainsGrader:
     """Check whether a string output contains the case's expected substring."""
+
+    budget_cost_free = True
 
     def __init__(
         self,
@@ -93,6 +99,8 @@ class RegexGrader:
     Patterns come from the evaluation case's expected value. Only use trusted
     patterns: Python's regular-expression engine does not impose a time limit.
     """
+
+    budget_cost_free = True
 
     def __init__(
         self,
@@ -167,6 +175,8 @@ class NumericToleranceGrader:
     A result passes when abs(actual - expected) <= abs_tol + rel_tol * abs(expected).
     Scores are binary so the class does not imply a domain-specific error scale.
     """
+
+    budget_cost_free = True
 
     def __init__(
         self,
@@ -244,6 +254,8 @@ def _finite_numeric(value: Any) -> float | None:
 class SchemaGrader:
     """Small deterministic JSON-schema subset: type, required, and properties."""
 
+    budget_cost_free = True
+
     def __init__(self, schema: Mapping[str, Any], name: str = "schema") -> None:
         self.schema = dict(schema)
         self.name = name
@@ -304,6 +316,8 @@ class Rule:
 
 
 class RuleBasedGrader:
+    """Evaluate caller-supplied predicates; their cost behavior is caller-dependent."""
+
     def __init__(self, rules: Iterable[Rule], name: str = "rules") -> None:
         self.rules = tuple(rules)
         if not self.rules:
@@ -323,6 +337,10 @@ class RuleBasedGrader:
 
 
 class TrajectoryGrader:
+    """Grade tool traces and step limits without making external calls."""
+
+    budget_cost_free = True
+
     def __init__(
         self,
         forbidden_tools: set[str] | None = None,

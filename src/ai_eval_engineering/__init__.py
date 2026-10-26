@@ -1,8 +1,25 @@
 """Provider-neutral building blocks for AI evaluation engineering."""
 
 from .agent import AgentEvaluationResult, AgentSuccessCriteria, evaluate_agent
-from .async_runner import AsyncEvaluationRunner, AsyncGrader, AsyncSystemAdapter
-from .budget import BudgetAssessment, BudgetViolation, RunBudgetPolicy, assess_run_budget
+from .async_runner import (
+    AsyncBudgetedGrader,
+    AsyncBudgetedSystemAdapter,
+    AsyncEvaluationRunner,
+    AsyncGrader,
+    AsyncSystemAdapter,
+)
+from .budget import (
+    BudgetAssessment,
+    BudgetedRunResult,
+    BudgetViolation,
+    LiveBudgetStatus,
+    RequestBudgetExceeded,
+    ReservedBudgetPolicy,
+    ReservedBudgetRunResult,
+    ReservedBudgetStatus,
+    RunBudgetPolicy,
+    assess_run_budget,
+)
 from .checkpoint import CheckpointError
 from .contracts import validate_run_inputs, validate_suite
 from .domain import (
@@ -88,7 +105,7 @@ from .result_import import (
     write_run_json,
 )
 from .retry import RetryEvent, RetryPolicy
-from .runner import EvaluationRunner, SystemAdapter
+from .runner import BudgetedGrader, BudgetedSystemAdapter, EvaluationRunner, SystemAdapter
 from .security import AdversarialCase, AdversarialCategory, summarize_adversarial_cases
 from .slices import GraderSliceMetric, SliceSummary, analyze_run_slices
 from .statistics import ConfidenceInterval, paired_bootstrap_difference_ci
@@ -113,6 +130,8 @@ __all__ = [
     "AgentEvaluationResult",
     "AgentSuccessCriteria",
     "AggregatedResult",
+    "AsyncBudgetedGrader",
+    "AsyncBudgetedSystemAdapter",
     "AsyncEvaluationRunner",
     "AsyncGrader",
     "AsyncOpenAICompatibleJudge",
@@ -120,6 +139,9 @@ __all__ = [
     "AsyncSystemAdapter",
     "BudgetAssessment",
     "BudgetViolation",
+    "BudgetedGrader",
+    "BudgetedRunResult",
+    "BudgetedSystemAdapter",
     "CalibrationReport",
     "CaseResult",
     "CheckpointError",
@@ -144,6 +166,7 @@ __all__ = [
     "JudgeProviderError",
     "JudgeResult",
     "LabelCalibration",
+    "LiveBudgetStatus",
     "MetricGateDecision",
     "NumericToleranceGrader",
     "OnlineMetricContract",
@@ -155,6 +178,10 @@ __all__ = [
     "RegexGrader",
     "ReleaseGateDecision",
     "ReleaseMetricPolicy",
+    "RequestBudgetExceeded",
+    "ReservedBudgetPolicy",
+    "ReservedBudgetRunResult",
+    "ReservedBudgetStatus",
     "RetryEvent",
     "RetryPolicy",
     "RubricDimension",

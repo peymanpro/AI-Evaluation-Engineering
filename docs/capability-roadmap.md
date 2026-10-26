@@ -12,7 +12,7 @@ The current repository is more than a basic evaluation loop. It includes:
 - synchronous and bounded-concurrency asynchronous runners, per-case async deadlines, and resumable checkpoints;
 - deterministic exact-match, substring, regex, numeric-tolerance, schema, rule-based, and trajectory graders, plus optional synchronous and native-async OpenAI-compatible judges;
 - judge calibration against supplied human labels, confidence intervals, paired comparisons, direction-aware regression gates, and decision-grade release evaluation;
-- Promptfoo v3 import, failure-delta reports, persistent failure memory, auditable evidence packages, a recorded-run CLI, post-run budget assessment, online-evidence guardrails, and cost/latency trade-off frontiers.
+- Promptfoo v3 import, failure-delta reports, persistent failure memory, auditable evidence packages, a recorded-run CLI, live and post-run budget controls, online-evidence guardrails, and cost/latency trade-off frontiers.
 
 These are substantive foundations. The main risk is not the absence of a long feature list; it is whether each primitive is sufficiently diagnostic, reproducible, safe to use, and integrated into ordinary evaluation workflows.
 
@@ -46,11 +46,15 @@ These are substantive foundations. The main risk is not the absence of a long fe
 
 **Guardrail:** built-in graders must define normalization, type errors, pass/score behavior, and any untrusted-input limitations.
 
-### P2 — Live budget guard
+### P2 — Live budget guard (implemented)
 
-**Problem:** the existing budget policy evaluates recorded cost, token counts, and latency after the run. It cannot stop work before a provider charges for it.
+**Problem:** a post-run assessment can identify overspend, but it cannot prevent later cases from being sent after observed usage reaches a configured limit.
 
-**Proposed capability:** an opt-in run controller that checks known cumulative usage before scheduling additional cases and stops scheduling when a configured threshold is reached. Its contract must explicitly describe the possible overshoot from the request that crosses the limit and any already in-flight parallel requests. Never promise a hard spend cap without provider-side controls.
+**Capability:** both runners expose an opt-in `run_budgeted` method that reuses `RunBudgetPolicy`. It checks actual adapter cost and latency as soon as an output is returned, and checks grader-reported token usage after grading. It stops scheduling new cases when a configured threshold is reached. Required missing or malformed measurements fail closed and stop later cases rather than counting unknown usage as zero. The result is a distinct `BudgetedRunResult` with completed cases, not-started case IDs, known usage subtotals, status, and a stop reason; a partial result is never represented as a completed `EvaluationRun`.
+
+**Concurrency boundary:** `run_budgeted` is an observed-usage guard. The stricter `run_reserved_budgeted` reserves a per-case ceiling before dispatch, including the sum of all reservations for a concurrently launched batch. It requires each billable adapter/grader to enforce the supplied maximum and to report actual cost; otherwise strict mode rejects the component before making requests. The ceiling is only as strong as those component contracts and the provider's enforcement.
+
+**Acceptance criteria:** sync/async parity; stable output ordering; fail-closed missing evidence; token accounting based on existing grader usage metadata; checkpoint resumption counts previously completed cases; tests for total/per-case cost, token limits, zero limits, missing evidence, and concurrent overshoot behavior.
 
 ### P2 — Safe, version-aware caching
 
