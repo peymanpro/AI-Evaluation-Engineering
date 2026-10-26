@@ -5,6 +5,7 @@
 [![Python 3.11–3.13 tested](https://img.shields.io/badge/python-3.11--3.13-3776AB.svg)](https://www.python.org/)
 [![CI](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/peymanpro/AI-Evaluation-Engineering/actions/workflows/ci.yml)
 [![Latest GitHub Release](https://img.shields.io/github/v/release/peymanpro/AI-Evaluation-Engineering)](https://github.com/peymanpro/AI-Evaluation-Engineering/releases)
+[![PyPI project](https://img.shields.io/badge/PyPI-ai--evaluation--engineering-3775A9.svg)](https://pypi.org/project/ai-evaluation-engineering/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 The library keeps case-level observations and run metadata available for inspection. It helps teams answer not only *“What score did this model get?”*, but also *“Which cases failed, how certain is the comparison, what did the run cost, and is the evidence complete enough to support a release decision?”*
@@ -67,7 +68,7 @@ The library separates **execution**, **grading**, **statistical interpretation**
 
 ## Installation
 
-**The `0.3.0` release is being prepared; PyPI publication has not yet been triggered.** Until the package is confirmed available from the public index, install from a source checkout.
+**The `v0.3.0` GitHub Release is available, but the initial PyPI upload is still pending.** The [PyPI project page](https://pypi.org/project/ai-evaluation-engineering/) is the intended installation target. Until the first upload succeeds, install from a source checkout. Once published, the package can be installed with `python -m pip install ai-evaluation-engineering`.
 
 ~~~bash
 git clone https://github.com/peymanpro/AI-Evaluation-Engineering.git
@@ -583,7 +584,7 @@ Generated `artifacts/` files are ignored by Git. Do not commit run outputs that 
 
 ## Release status
 
-The repository is preparing version `0.3.0` for the current `main` source. **This preparation does not publish the package to PyPI.** The existing `v0.2.0` GitHub release points to an earlier source revision and should not be treated as the distribution of the current `main` capabilities.
+The `v0.3.0` GitHub Release is published with its built distributions. **The initial PyPI upload has not yet been completed.** The intended PyPI project page is [ai-evaluation-engineering](https://pypi.org/project/ai-evaluation-engineering/). The older `v0.2.0` release points to an earlier source revision and should not be treated as the distribution of the current `main` capabilities.
 
 On a push to `main`, the release workflow validates the source, builds and checks the distributions, verifies wheel installation, and creates a matching GitHub Release. It does **not** publish to PyPI automatically. PyPI publication requires a separate authorized run from GitHub Actions using `workflow_dispatch` with `publish_pypi=true`, plus a configured Trusted Publisher for owner `peymanpro`, repository `AI-Evaluation-Engineering`, workflow `.github/workflows/release.yml`, and environment `pypi`.
 
