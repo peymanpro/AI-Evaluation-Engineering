@@ -205,7 +205,7 @@ def test_invalid_token_usage_stops_budgeted_run_with_invalid_evidence() -> None:
     result = EvaluationRunner(adapter, [InvalidUsageGrader()]).run_budgeted(
         suite,
         manifest_for(suite),
-        policy=RunBudgetPolicy(max_total_tokens=10),
+        policy=RunBudgetPolicy(max_total_cost_usd=1.0, max_total_tokens=10),
     )
 
     assert adapter.calls == ["case-0"]
