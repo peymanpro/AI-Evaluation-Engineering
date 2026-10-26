@@ -261,6 +261,7 @@ class EvaluationRunner:
         request may already have been billed.
         """
         validate_run_inputs(suite, manifest)
+        validate_retry_policy_manifest(manifest.configuration, self._retry_policy)
         if not isinstance(policy, ReservedBudgetPolicy):
             raise TypeError("policy must be a ReservedBudgetPolicy.")
         if self._retry_policy is not None:
