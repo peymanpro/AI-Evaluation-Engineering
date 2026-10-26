@@ -109,8 +109,9 @@ asyncio.run(main())
 The adapter's `run` method must be async and return a `SystemOutput`. Existing graders remain
 synchronous and execute on the event loop; use fast, non-blocking graders here. If an adapter or
 grader raises, pending worker tasks are cancelled and the runner raises instead of returning a
-partial run. The async runner does not silently retry requests because retry safety and rate limits
-are provider-specific. See the [async demo](examples/async_evaluation.py).
+partial run. A timeout cancels the current adapter coroutine and fails the run; it does not return a
+partial `EvaluationRun`. The async runner does not silently retry requests because retry safety and
+rate limits are provider-specific. See the [async demo](examples/async_evaluation.py).
 
 ## Promptfoo adapter
 
