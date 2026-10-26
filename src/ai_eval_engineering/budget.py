@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -693,22 +694,24 @@ class RequestBudgetExceeded(RuntimeError):
 
 
 class _ReservedBudgetController:
-    """Reserve worst-case per-case amounts before any cost-bearing request starts."""
+    """Reserve per-case amounts using decimal arithmetic before billable calls."""
 
     def __init__(self, policy: ReservedBudgetPolicy) -> None:
         self.policy = policy
-        self._known_cost_usd = 0.0
-        self._reserved_cost_usd = 0.0
+        self._total_cap = Decimal(str(policy.max_total_cost_usd))
+        self._case_cap = Decimal(str(policy.max_case_cost_usd))
+        self._known_cost_usd = Decimal("0")
+        self._reserved_cost_usd = Decimal("0")
         self._stop_status: ReservedBudgetStatus | None = None
         self._stop_reason: str | None = None
 
     @property
     def known_cost_usd(self) -> float:
-        return self._known_cost_usd
+        return float(self._known_cost_usd)
 
     @property
     def reserved_cost_usd(self) -> float:
-        return self._reserved_cost_usd
+        return float(self._reserved_cost_usd)
 
     @property
     def stop_status(self) -> ReservedBudgetStatus | None:
@@ -720,30 +723,36 @@ class _ReservedBudgetController:
 
     @property
     def remaining_usd(self) -> float:
+        return float(self._remaining_decimal())
+
+    def _remaining_decimal(self) -> Decimal:
         return max(
-            0.0,
-            float(self.policy.max_total_cost_usd)
-            - self._known_cost_usd
-            - self._reserved_cost_usd,
+            Decimal("0"),
+            self._total_cap - self._known_cost_usd - self._reserved_cost_usd,
         )
 
+    @staticmethod
+    def _decimal_amount(value: float | int) -> Decimal:
+        """Convert API numbers by their decimal spelling, avoiding binary-float drift."""
+        return Decimal(str(value))
+
     def reserve_case(self) -> float | None:
-        """Atomically reserve a case ceiling, accounting for all in-flight cases."""
+        """Atomically reserve a case ceiling, accounting for every in-flight case."""
         if self._stop_status is not None:
             return None
-        remaining = self.remaining_usd
-        if remaining <= 0.0:
+        remaining = self._remaining_decimal()
+        if remaining <= 0:
             # Active cases already own reservations. Let those bounded requests
             # finish; report the exhausted budget after their batch settles.
-            if self._reserved_cost_usd <= 0.0:
+            if self._reserved_cost_usd <= 0:
                 self.stop(
                     "BUDGET_LIMIT_REACHED",
                     f"no unreserved budget remains under total cap {self.policy.max_total_cost_usd:.8g} USD",
                 )
             return None
-        allocation = min(float(self.policy.max_case_cost_usd), remaining)
-        self._reserved_cost_usd = math.fsum((self._reserved_cost_usd, allocation))
-        return allocation
+        allocation = min(self._case_cap, remaining)
+        self._reserved_cost_usd += allocation
+        return float(allocation)
 
     def record_component_cost(
         self,
@@ -770,34 +779,55 @@ class _ReservedBudgetController:
             )
             return None
 
-        unspent_case_reservation = max(0.0, allocation_usd - case_spent_usd)
-        consumed_reservation = min(unspent_case_reservation, cost)
+        cost_decimal = self._decimal_amount(cost_value)
+        allocation = self._decimal_amount(allocation_usd)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        unspent_case_reservation = max(Decimal("0"), allocation - case_spent)
+        consumed_reservation = min(unspent_case_reservation, cost_decimal)
         self._reserved_cost_usd = max(
-            0.0, self._reserved_cost_usd - consumed_reservation
+            Decimal("0"), self._reserved_cost_usd - consumed_reservation
         )
-        self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
-        if cost > unspent_case_reservation:
+        self._known_cost_usd += cost_decimal
+        if cost_decimal > unspent_case_reservation:
             self.stop(
                 "REQUEST_CAP_VIOLATED",
                 (
                     f"case {case_id!r} {source} charged {cost:.8g} USD when only "
-                    f"{unspent_case_reservation:.8g} USD remained in its reservation"
+                    f"{float(unspent_case_reservation):.8g} USD remained in its reservation"
+                ),
+            )
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                (
+                    f"measured cost {float(self._known_cost_usd):.8g} USD exceeded "
+                    f"total cap {self.policy.max_total_cost_usd:.8g} USD"
                 ),
             )
         return cost
 
     def release_case(self, allocation_usd: float, case_spent_usd: float) -> None:
-        """Release unused reservation when every component cost is reconciled."""
-        remainder = max(0.0, allocation_usd - case_spent_usd)
-        self._reserved_cost_usd = max(0.0, self._reserved_cost_usd - remainder)
+        """Release unused reservation when all costs for a case are reconciled."""
+        allocation = self._decimal_amount(allocation_usd)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        remainder = max(Decimal("0"), allocation - case_spent)
+        self._reserved_cost_usd = max(
+            Decimal("0"), self._reserved_cost_usd - remainder
+        )
 
     def add_existing_cost(self, cost: float, *, case_id: str, source: str) -> None:
-        """Account for a measured charge already present in a checkpoint."""
-        self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
+        """Account for measured charges already present in a checkpoint."""
         if cost < 0 or not math.isfinite(cost):
             self.stop(
                 "INVALID_BUDGET_EVIDENCE",
                 f"case {case_id!r} {source} has invalid recorded cost",
+            )
+            return
+        self._known_cost_usd += self._decimal_amount(cost)
+        if self._known_cost_usd > self._total_cap:
+            self.stop(
+                "REQUEST_CAP_VIOLATED",
+                f"checkpointed cost exceeds total cap {self.policy.max_total_cost_usd:.8g} USD",
             )
 
     def record_existing_component_cost(
@@ -823,21 +853,24 @@ class _ReservedBudgetController:
                 issues[0] if issues else f"checkpoint case {case_id!r} has invalid cost",
             )
             return None
-        self._known_cost_usd = math.fsum((self._known_cost_usd, cost))
-        case_total = math.fsum((case_spent_usd, cost))
-        if case_total > float(self.policy.max_case_cost_usd):
+
+        cost_decimal = self._decimal_amount(cost_value)
+        case_spent = self._decimal_amount(round(case_spent_usd, 12))
+        self._known_cost_usd += cost_decimal
+        case_total = case_spent + cost_decimal
+        if case_total > self._case_cap:
             self.stop(
                 "REQUEST_CAP_VIOLATED",
                 (
-                    f"checkpoint case {case_id!r} has measured cost {case_total:.8g} USD "
+                    f"checkpoint case {case_id!r} has measured cost {float(case_total):.8g} USD "
                     f"above its case cap {self.policy.max_case_cost_usd:.8g} USD"
                 ),
             )
-        if self._known_cost_usd > float(self.policy.max_total_cost_usd):
+        if self._known_cost_usd > self._total_cap:
             self.stop(
                 "REQUEST_CAP_VIOLATED",
                 (
-                    f"checkpointed cost {self._known_cost_usd:.8g} USD exceeds total cap "
+                    f"checkpointed cost {float(self._known_cost_usd):.8g} USD exceeds total cap "
                     f"{self.policy.max_total_cost_usd:.8g} USD"
                 ),
             )
@@ -876,7 +909,7 @@ class _ReservedBudgetController:
                 "the run ended with cases not completed and no recorded budget stop reason",
             )
             return self._stop_status or "INCOMPLETE_BUDGET_EVIDENCE"
-        if self._known_cost_usd > float(self.policy.max_total_cost_usd):
+        if self._known_cost_usd > self._total_cap:
             self.stop(
                 "REQUEST_CAP_VIOLATED",
                 "measured cost exceeded the configured total cap",
