@@ -5,6 +5,7 @@ Notable user-facing changes are recorded here. This project follows semantic ver
 ## Unreleased
 
 ### Added
+- Failure-aware synchronous and asynchronous run reports that preserve per-case adapter, output-validation, grader-execution, and grader-contract failures without fabricating grader scores; reports have strict versioned JSON I/O and can only become ordinary runs when every case completed.
 - Bounded-concurrency asynchronous evaluation runner with stable suite-order results, shared synchronous graders, and fail-fast cancellation semantics.
 - Optional per-case async adapter deadlines with cancellation and explicit failure instead of an indefinitely blocked run.
 - Preflight suite/manifest validation and per-case output/grader contract checks to prevent inconsistent or non-finite evidence from entering a run.
