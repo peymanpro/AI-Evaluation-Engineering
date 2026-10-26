@@ -18,6 +18,7 @@ def _normalize(value: Any) -> Any:
 
 
 class ExactMatchGrader:
+    budget_cost_free = True
     def __init__(self, name: str = "exact_match", normalize: bool = True) -> None:
         self.name = name
         self.normalize = normalize
@@ -38,6 +39,7 @@ class ExactMatchGrader:
 
 
 class ContainsGrader:
+    budget_cost_free = True
     """Check whether a string output contains the case's expected substring."""
 
     def __init__(
@@ -88,6 +90,7 @@ class ContainsGrader:
 
 
 class RegexGrader:
+    budget_cost_free = True
     """Match string output against the case's expected regular-expression pattern.
 
     Patterns come from the evaluation case's expected value. Only use trusted
@@ -162,6 +165,7 @@ class RegexGrader:
 
 
 class NumericToleranceGrader:
+    budget_cost_free = True
     """Compare numeric output with the expected value using absolute/relative tolerance.
 
     A result passes when abs(actual - expected) <= abs_tol + rel_tol * abs(expected).
@@ -242,6 +246,7 @@ def _finite_numeric(value: Any) -> float | None:
 
 
 class SchemaGrader:
+    budget_cost_free = True
     """Small deterministic JSON-schema subset: type, required, and properties."""
 
     def __init__(self, schema: Mapping[str, Any], name: str = "schema") -> None:
@@ -304,6 +309,7 @@ class Rule:
 
 
 class RuleBasedGrader:
+    budget_cost_free = True
     def __init__(self, rules: Iterable[Rule], name: str = "rules") -> None:
         self.rules = tuple(rules)
         if not self.rules:
@@ -323,6 +329,7 @@ class RuleBasedGrader:
 
 
 class TrajectoryGrader:
+    budget_cost_free = True
     def __init__(
         self,
         forbidden_tools: set[str] | None = None,
