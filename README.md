@@ -21,7 +21,6 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
 - decision-grade paired release gates and failure-delta triage between system versions;
 - persistent failure memory and class-aware calibration metrics;
-- optional real-provider judging with safe structured-result validation and token-usage metadata;
 - installable Python distributions with PyPI Trusted Publishing support.
 
 ## Architecture
