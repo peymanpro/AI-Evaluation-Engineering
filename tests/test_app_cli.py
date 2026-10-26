@@ -13,8 +13,8 @@ from ai_eval_engineering.domain import (
     SystemOutput,
 )
 from ai_eval_engineering.result_import import write_run_json
-from ai_eval_engineering.suite_io import write_suite_json
 from ai_eval_engineering.runner import build_run_metadata
+from ai_eval_engineering.suite_io import write_suite_json
 
 
 def make_run(system_version: str, score: float) -> EvaluationRun:
