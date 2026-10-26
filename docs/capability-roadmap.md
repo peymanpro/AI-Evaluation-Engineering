@@ -10,7 +10,7 @@ The current repository is more than a basic evaluation loop. It includes:
 
 - typed cases, versioned suites, strict JSON interchange, preflight contract validation, and run manifests;
 - synchronous and bounded-concurrency asynchronous runners, per-case async deadlines, and resumable checkpoints;
-- deterministic exact-match, schema, rule-based, and trajectory graders, plus optional synchronous and native-async OpenAI-compatible judges;
+- deterministic exact-match, substring, regex, numeric-tolerance, schema, rule-based, and trajectory graders, plus optional synchronous and native-async OpenAI-compatible judges;
 - judge calibration against supplied human labels, confidence intervals, paired comparisons, direction-aware regression gates, and decision-grade release evaluation;
 - Promptfoo v3 import, failure-delta reports, persistent failure memory, auditable evidence packages, a recorded-run CLI, post-run budget assessment, online-evidence guardrails, and cost/latency trade-off frontiers.
 
