@@ -8,6 +8,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
+- preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
@@ -57,6 +58,26 @@ The framework preserves raw case-level observations so aggregate claims can be i
 
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
+
+## Input contract validation
+
+Both runners validate the suite and run manifest before making system calls. They reject duplicate
+case IDs, empty identifiers, non-JSON values and non-finite numbers in case evidence, or a manifest
+whose suite version does not match the cases being evaluated. Adapter outputs and grader results are
+also checked before they enter the recorded run, including output IDs, finite cost/latency, and unique
+grader names per case.
+
+You can validate a dataset explicitly before scheduling model calls:
+
+```python
+from ai_eval_engineering import EvaluationSuite, validate_suite
+
+suite = EvaluationSuite("support-v1", cases=...)
+validate_suite(suite)
+```
+
+The runners invoke this check automatically. Contract validation catches structural inconsistencies;
+it does not prove that the test cases, labels, graders, or model outputs are semantically correct.
 
 ## Asynchronous evaluation
 
