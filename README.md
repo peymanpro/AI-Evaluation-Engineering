@@ -17,6 +17,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 - explicit baselines and deterministic regression gates;
 - quality/cost and quality/latency trade-off frontiers;
 - machine-readable, human-readable, and auditable evidence packages;
+- a provider-free CLI for validating recorded runs, comparing baseline/candidate revisions, and enforcing post-run budgets;
 - integration adapters for three existing portfolio projects;
 - CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
 - versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
