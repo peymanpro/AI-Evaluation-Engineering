@@ -350,3 +350,22 @@ def test_composite_grader_combines_multiple_structured_field_assertions() -> Non
     assert result.passed
     assert result.score == pytest.approx(1.0)
     assert result.metadata["components"][0]["weight"] == 0.75
+
+
+
+def test_json_field_grader_rejects_non_json_fixed_expected_value() -> None:
+    with pytest.raises(ValueError, match="finite JSON-compatible"):
+        JsonFieldGrader("/result", expected_value=float("nan"))
+
+
+def test_json_field_grader_snapshots_configured_expected_value() -> None:
+    expected = {"state": "approved"}
+    grader = JsonFieldGrader("/decision", expected_value=expected)
+    expected["state"] = "denied"
+
+    result = grader.grade(
+        EvaluationCase("stable-target", {}, expected=None),
+        SystemOutput("stable-target", {"decision": {"state": "approved"}}),
+    )
+
+    assert result.passed
