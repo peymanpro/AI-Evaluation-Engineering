@@ -10,9 +10,9 @@ from ai_eval_engineering import (
     EvaluationCase,
     EvaluationSuite,
     SystemOutput,
-    build_run_metadata,
 )
 from ai_eval_engineering.graders import ExactMatchGrader
+from ai_eval_engineering.runner import build_run_metadata
 
 
 class AsyncEchoSystem:
