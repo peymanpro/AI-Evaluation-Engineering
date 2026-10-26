@@ -1,3 +1,5 @@
+import pytest
+
 from ai_eval_engineering.domain import EvaluationCase, SystemOutput
 from ai_eval_engineering.graders import (
     ContainsGrader,
@@ -106,8 +108,6 @@ def test_numeric_tolerance_grader_rejects_bool_and_non_finite_values() -> None:
 
 
 def test_numeric_tolerance_configuration_must_be_finite_and_non_negative() -> None:
-    import pytest
-
     with pytest.raises(ValueError, match="finite and non-negative"):
         NumericToleranceGrader(abs_tol=float("inf"))
     with pytest.raises(ValueError, match="finite and non-negative"):
