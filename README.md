@@ -460,6 +460,7 @@ print(result.known_cost_usd)
 print(result.reserved_cost_usd)
 print(result.pending_case_ids)
 print(result.incomplete_case_ids)
+print(result.unresolved_cost_case_ids)
 print(result.not_started_case_ids)
 ```
 
