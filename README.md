@@ -63,7 +63,8 @@ synthetic fixtures and makes no external model calls.
 Use `AsyncEvaluationRunner` when the system under test is accessed through async HTTP clients,
 model APIs, or another asynchronous runtime. Set `max_concurrency` to cap in-flight system calls.
 The runner preserves the original suite order in the returned `EvaluationRun`, even when requests
-finish in a different order, and reuses the existing synchronous grader contract.
+finish in a different order, and reuses the existing synchronous grader contract. An optional
+`timeout_per_case_seconds` setting places a deadline on each async system call.
 
 ```python
 import asyncio
@@ -89,7 +90,12 @@ async def main() -> None:
         "support-v1",
         (EvaluationCase("case-1", {"question": "Where is my order?"}, expected="shipped"),),
     )
-    runner = AsyncEvaluationRunner(MyAsyncSystem(), [ExactMatchGrader()], max_concurrency=8)
+    runner = AsyncEvaluationRunner(
+        MyAsyncSystem(),
+        [ExactMatchGrader()],
+        max_concurrency=8,
+        timeout_per_case_seconds=30.0,
+    )
     run = await runner.run(
         suite,
         build_run_metadata(suite, "support-assistant", "git:abc123"),
@@ -103,8 +109,9 @@ asyncio.run(main())
 The adapter's `run` method must be async and return a `SystemOutput`. Existing graders remain
 synchronous and execute on the event loop; use fast, non-blocking graders here. If an adapter or
 grader raises, pending worker tasks are cancelled and the runner raises instead of returning a
-partial run. The async runner does not silently retry requests because retry safety and rate limits
-are provider-specific. See the [async demo](examples/async_evaluation.py).
+partial run. A timeout cancels the current adapter coroutine and fails the run; it does not return a
+partial `EvaluationRun`. The async runner does not silently retry requests because retry safety and
+rate limits are provider-specific. See the [async demo](examples/async_evaluation.py).
 
 ## Promptfoo adapter
 

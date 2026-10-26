@@ -6,7 +6,7 @@
 - Offline evaluation does not imply online product impact.
 - Contract-snapshot integrations verify adapter compatibility and evaluation semantics; they do not execute the sibling applications inside this CI job.
 - Quality/cost/latency frontiers expose trade-offs without automatically selecting a preferred system.
-- The async runner bounds asynchronous system calls but does not retry failed requests, persist partial runs, or make synchronous graders non-blocking. Retry rules and idempotency remain provider/application responsibilities.
+- The async runner bounds asynchronous system calls and can apply a per-case adapter deadline, but it does not retry failed requests, persist partial runs, or make synchronous graders non-blocking. A timeout fails the whole run after cancelling pending workers; retry rules and idempotency remain provider/application responsibilities.
 - Online experimentation, cloud-provider integrations, and production analytics adapters remain outside the V1.1 boundary.
 
 - An online evidence assessment marked `sufficient` means only that the configured data-integrity and minimum-count checks passed. It is not a power analysis, proof of causal validity, or evidence that an effect is practically meaningful.
