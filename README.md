@@ -4,20 +4,24 @@ A provider-neutral evaluation layer for systematically measuring, comparing, and
 
 This repository treats evaluation as an engineering discipline rather than a final metric-reporting step.
 
-## What V1.1 demonstrates
+## What the library provides
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - reusable evaluation runners with provider-neutral system adapters;
 - deterministic exact-match, schema, rule-based, and trajectory graders;
 - typed agent trajectory replay and separate task/step success analysis;
 - an adversarial taxonomy and executable security-regression cases;
-- a model-judge boundary with rubric representation and human calibration;
+- an optional OpenAI-compatible structured-output LLM judge, rubric representation, and human calibration;
 - bootstrap confidence intervals, paired comparison, effect-size reporting, and run-to-run variance analysis;
 - explicit baselines and deterministic regression gates;
 - quality/cost and quality/latency trade-off frontiers;
 - machine-readable, human-readable, and auditable evidence packages;
 - integration adapters for three existing portfolio projects;
-- CI quality gates with tests, Ruff, mypy, and reproducible demonstrations.
+- CI quality gates with tests, Ruff, mypy, and reproducible demonstrations;
+- versioned external-run JSON interchange and a Promptfoo v3 JSON adapter;
+- decision-grade paired release gates and failure-delta triage between system versions;
+- persistent failure memory and class-aware calibration metrics;
+- installable Python distributions with PyPI Trusted Publishing support.
 
 ## Architecture
 
@@ -178,6 +182,17 @@ The JSON envelope contains `schema_version`, `manifest`, and `cases`. Each case 
 must be unique within their required scope; each output's case ID must match its case. Scores must
 be finite numbers, and latency/cost must be finite and non-negative. Nested metadata and outputs
 must contain JSON values only.
+
+The versioned JSON Schema ships inside the installed wheel and can be loaded by consumers that
+need to validate their own export files before handing them to the importer:
+
+```python
+from ai_eval_engineering import get_external_run_schema
+
+schema = get_external_run_schema()
+print(schema["$schema"])
+print(schema["properties"]["schema_version"]["const"])
+```
 
 This is a provider-neutral interchange format, not a built-in SDK for a particular vendor. The
 external tool or a small tool-specific adapter remains responsible for mapping its fields into the
@@ -524,13 +539,44 @@ exports.
 
 See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `docs/V1.1-CLOSURE.md`.
 
-## Automated releases
+## Install from PyPI
+
+After the `0.2.0` publication completes, the normal installation will be:
+
+```bash
+pip install ai-evaluation-engineering
+```
+
+For the optional live OpenAI-compatible judge, install its extra:
+
+```bash
+pip install "ai-evaluation-engineering[openai]"
+```
+
+If the package has not yet been published on PyPI, the release workflow or trusted-publisher setup is still pending; do not assume a successful GitHub Release alone means a PyPI upload succeeded.
+
+## Automated releases and PyPI publishing
 
 The release workflow reads the version from `pyproject.toml`, runs the test suite, Ruff, mypy, and
 the project's core, online-evaluation, security-regression, trade-off, integration-contract, and
-Promptfoo baseline/candidate demonstrations. The Promptfoo demonstration verifies the expected
-`FAIL` decision and the 11-new / 2-resolved / 4-persistent failure counts using synthetic
-fixtures. The workflow then builds the Python distributions and attaches them to the GitHub Release
-with generated release notes.
+Promptfoo baseline/candidate demonstrations. It then builds the wheel and source distribution,
+runs `twine check`, performs an import smoke test against the built wheel, and attaches the
+distributions to the GitHub Release. A separate, least-privileged job publishes the same validated
+distributions to PyPI using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/);
+no long-lived PyPI token is stored by this workflow.
 
-To publish the next version, increment `[project].version` in `pyproject.toml` and push to `main`, or push a matching `vMAJOR.MINOR.PATCH` tag. Existing version tags and releases are never overwritten. The wheel and source distribution are attached only after the CLI, evaluation, security-regression, trade-off, and integration-contract demonstrations complete successfully. Those integration adapters are deterministic contract snapshots rather than live-process integration claims.
+Before the first upload, configure a Trusted Publisher in your PyPI account (or a pending publisher
+if the project has not been created yet). Use owner `peymanpro`, repository
+`AI-Evaluation-Engineering`, workflow file `.github/workflows/release.yml`, and GitHub environment
+`pypi`. See the [PyPI setup guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
+This is a one-time account-level step that cannot be completed by a repository commit alone.
+
+To release the next version, increment `[project].version` in `pyproject.toml` and push to `main`.
+The workflow creates the matching `vMAJOR.MINOR.PATCH` GitHub Release and attempts the PyPI upload.
+Existing version tags are never overwritten. If PyPI publishing fails only because Trusted
+Publishing was not configured yet, configure it and manually rerun the release workflow from
+`main` with `publish_pypi=true` and the matching version; the workflow rebuilds and validates the
+same tagged source before retrying the upload. The wheel and source distribution are attached only
+after tests, Ruff, mypy, all demos, package metadata checks, and the built-wheel import smoke test
+succeed. CI uses synthetic Promptfoo fixtures and makes no paid model calls; a GitHub Release alone
+does not prove that the PyPI upload completed.

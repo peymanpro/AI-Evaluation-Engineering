@@ -63,6 +63,18 @@ def payload() -> dict[str, Any]:
     }
 
 
+def test_packaged_json_schema_matches_repository_contract() -> None:
+    schema = public_api.get_external_run_schema()
+    repository_schema_path = (
+        Path(__file__).parents[1] / "schemas" / "external-run-v1.schema.json"
+    )
+    repository_schema = json.loads(repository_schema_path.read_text(encoding="utf-8"))
+
+    assert schema == repository_schema
+    assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+    assert schema["properties"]["schema_version"]["const"] == EXTERNAL_RUN_SCHEMA_VERSION
+
+
 def test_import_and_export_round_trip_preserves_domain_data() -> None:
     original = payload()
 

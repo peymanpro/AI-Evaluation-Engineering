@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/peymanpro/AI-Evaluation-Engineering/blob/main/schemas/external-run-v1.schema.json",
+  "title": "AI Evaluation Engineering External Run",
+  "description": "Version 1 interchange envelope for importing completed evaluation runs from external tools.",
+  "type": "object",
+  "required": ["schema_version", "manifest", "cases"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/caseResult"
+      }
+    }
+  },
+  "$defs": {
+    "jsonValue": {
+      "description": "Any JSON value. Non-finite numeric values are not valid JSON numbers.",
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "string"},
+        {"type": "number"},
+        {
+          "type": "array",
+          "items": {"$ref": "#/$defs/jsonValue"}
+        },
+        {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/jsonValue"}
+        }
+      ]
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/jsonValue"}
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "suite_version",
+        "system_name",
+        "system_version",
+        "timestamp_utc"
+      ],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "suite_version": {"type": "string", "minLength": 1},
+        "system_name": {"type": "string", "minLength": 1},
+        "system_version": {"type": "string", "minLength": 1},
+        "timestamp_utc": {
+          "type": "string",
+          "minLength": 1,
+          "description": "UTC timestamp string supplied by the producing tool."
+        },
+        "configuration": {"$ref": "#/$defs/jsonObject"},
+        "environment": {"$ref": "#/$defs/jsonObject"},
+        "seed": {
+          "oneOf": [
+            {"type": "integer"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "input"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "input": {"$ref": "#/$defs/jsonObject"},
+        "expected": {"$ref": "#/$defs/jsonValue"},
+        "metadata": {"$ref": "#/$defs/jsonObject"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "risk_category": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["case_id", "output"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "output": {"$ref": "#/$defs/jsonValue"},
+        "latency_ms": {
+          "oneOf": [
+            {"type": "number", "minimum": 0},
+            {"type": "null"}
+          ]
+        },
+        "cost_usd": {
+          "oneOf": [
+            {"type": "number", "minimum": 0},
+            {"type": "null"}
+          ]
+        },
+        "trace": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/jsonObject"}
+        }
+      }
+    },
+    "grader": {
+      "type": "object",
+      "required": ["grader", "passed", "score", "details"],
+      "properties": {
+        "grader": {"type": "string", "minLength": 1},
+        "passed": {"type": "boolean"},
+        "score": {"type": "number"},
+        "details": {"type": "string"},
+        "metadata": {"$ref": "#/$defs/jsonObject"}
+      }
+    },
+    "caseResult": {
+      "type": "object",
+      "required": ["case", "output", "graders"],
+      "properties": {
+        "case": {"$ref": "#/$defs/case"},
+        "output": {"$ref": "#/$defs/output"},
+        "graders": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/grader"}
+        }
+      }
+    }
+  }
+}

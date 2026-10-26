@@ -10,9 +10,14 @@ on:
         description: "Optional version to publish; must match pyproject.toml"
         required: false
         type: string
+      publish_pypi:
+        description: "Publish the built distributions to PyPI using a configured Trusted Publisher"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,8 +25,12 @@ concurrency:
 
 jobs:
   release:
-    name: Validate, build, and publish
+    name: Validate, build, and publish GitHub Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -38,6 +47,7 @@ jobs:
         shell: bash
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH_PYPI: ${{ inputs.publish_pypi }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -45,7 +55,7 @@ jobs:
           project_version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
           tag="v$project_version"
           echo "skip=false" >> "$GITHUB_OUTPUT"
-          if [[ "$REF_TYPE" != "tag" ]] && git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
+          if [[ "$REF_TYPE" != "tag" && "$INPUT_PUBLISH_PYPI" != "true" ]] && git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Version tag $tag already exists. A branch update will not republish that tag; increment the project version for the next release."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "version=$project_version" >> "$GITHUB_OUTPUT"
@@ -67,9 +77,9 @@ jobs:
           echo "tag=v$project_version" >> "$GITHUB_OUTPUT"
           echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Install package and developer tools
+      - name: Install package, developer tools, and the optional judge SDK
         if: steps.version.outputs.skip != 'true'
-        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,openai]"
 
       - name: Tests
         if: steps.version.outputs.skip != 'true'
@@ -83,6 +93,11 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: mypy src
 
+      - name: Verify optional OpenAI SDK initialization without a network call
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          python -c 'from ai_eval_engineering import OpenAICompatibleJudge; judge = OpenAICompatibleJudge(model="package-smoke-test", api_key="test-only-key", base_url="http://127.0.0.1:1"); assert judge._client is not None; print("Optional OpenAI SDK initialization passed.")'
+
       - name: Verify demonstrations
         if: steps.version.outputs.skip != 'true'
         run: |
@@ -93,11 +108,33 @@ jobs:
           python examples/integrations.py
           python examples/promptfoo_release_workflow.py
 
-      - name: Build distributions
+      - name: Build and validate distributions
         if: steps.version.outputs.skip != 'true'
         run: |
-          python -m pip install build
+          python -m pip install build twine
           python -m build
+          twine check dist/*
+
+      - name: Upload distributions for the PyPI job
+        if: steps.version.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify wheel can be installed
+        if: steps.version.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="$RUNNER_TEMP/wheel-install"
+          python -m pip install --no-deps --target "$install_dir" dist/*.whl
+          (
+            cd "$RUNNER_TEMP"
+            PYTHONPATH="$install_dir" python -c 'import ai_eval_engineering; assert hasattr(ai_eval_engineering, "OpenAICompatibleJudge"); assert ai_eval_engineering.get_external_run_schema()["properties"]["schema_version"]["const"] == 1; print("Built wheel API/schema smoke test passed.")'
+          )
 
       - name: Publish GitHub Release if not already published
         if: steps.version.outputs.skip != 'true'
@@ -121,3 +158,30 @@ jobs:
             gh release create "$RELEASE_TAG" dist/* --target "$TARGET_SHA" --repo "$GH_REPO" \
               --title "AI Evaluation Engineering $RELEASE_TAG" --generate-notes
           fi
+
+  publish-pypi:
+    name: Publish distributions to PyPI
+    needs: release
+    if: >-
+      needs.release.result == 'success' &&
+      needs.release.outputs.skip != 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true)
+      )
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ai-evaluation-engineering/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download validated distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

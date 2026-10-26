@@ -4,13 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-evaluation-engineering"
-version = "0.1.0"
+version = "0.2.0"
 description = "A provider-neutral engineering framework for evaluating, comparing, and regression-testing AI systems."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [{name = "Peyman Salimi"}]
 dependencies = []
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/peymanpro/AI-Evaluation-Engineering"
+Repository = "https://github.com/peymanpro/AI-Evaluation-Engineering"
+Issues = "https://github.com/peymanpro/AI-Evaluation-Engineering/issues"
+Changelog = "https://github.com/peymanpro/AI-Evaluation-Engineering/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -30,6 +46,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ai_eval_engineering = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
