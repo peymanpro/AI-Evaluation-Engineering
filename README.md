@@ -541,7 +541,7 @@ See `docs/architecture.md`, `docs/methodology.md`, `docs/limitations.md`, and `d
 
 ## Install from PyPI
 
-After the `0.2.0` publication completes, the normal installation will be:
+**PyPI publication is intentionally deferred until the library's capabilities are complete.** The current `v0.2.0` is available as a GitHub Release, but do not assume the PyPI package is installable yet. When the package is published at the end of feature development, the normal installation will be:
 
 ```bash
 pip install ai-evaluation-engineering
@@ -557,26 +557,24 @@ If the package has not yet been published on PyPI, the release workflow or trust
 
 ## Automated releases and PyPI publishing
 
-The release workflow reads the version from `pyproject.toml`, runs the test suite, Ruff, mypy, and
-the project's core, online-evaluation, security-regression, trade-off, integration-contract, and
-Promptfoo baseline/candidate demonstrations. It then builds the wheel and source distribution,
-runs `twine check`, performs an import smoke test against the built wheel, and attaches the
-distributions to the GitHub Release. A separate, least-privileged job publishes the same validated
-distributions to PyPI using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/);
-no long-lived PyPI token is stored by this workflow.
+The release workflow validates the source, runs the test suite, Ruff, mypy, and the project's core,
+online-evaluation, security-regression, trade-off, integration-contract, and Promptfoo baseline/candidate
+demonstrations. It then builds and validates the wheel and source distribution, smoke-tests the built
+wheel, and attaches the validated distributions to the GitHub Release.
 
-Before the first upload, configure a Trusted Publisher in your PyPI account (or a pending publisher
-if the project has not been created yet). Use owner `peymanpro`, repository
+**PyPI publishing is deliberately disabled for normal pushes, tag pushes, and automatic release runs.**
+This project is still in feature development; a successful CI run or GitHub Release does not publish
+the package to PyPI. When the feature set is ready, an authorized maintainer must manually run the
+`Release` workflow from `main` and explicitly set `publish_pypi=true` with the matching
+`version`. The workflow then validates the versioned source and publishes the corresponding
+validated distributions using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/);
+no long-lived PyPI token is stored by the workflow.
+
+Before that final publication, configure a Trusted Publisher (or a pending publisher if the project
+does not yet exist) in the PyPI account. Use owner `peymanpro`, repository
 `AI-Evaluation-Engineering`, workflow file `.github/workflows/release.yml`, and GitHub environment
 `pypi`. See the [PyPI setup guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/).
-This is a one-time account-level step that cannot be completed by a repository commit alone.
+This account-level configuration is intentionally separate from feature development.
 
-To release the next version, increment `[project].version` in `pyproject.toml` and push to `main`.
-The workflow creates the matching `vMAJOR.MINOR.PATCH` GitHub Release and attempts the PyPI upload.
-Existing version tags are never overwritten. If PyPI publishing fails only because Trusted
-Publishing was not configured yet, configure it and manually rerun the release workflow from
-`main` with `publish_pypi=true` and the matching version; the workflow rebuilds and validates the
-same tagged source before retrying the upload. The wheel and source distribution are attached only
-after tests, Ruff, mypy, all demos, package metadata checks, and the built-wheel import smoke test
-succeed. CI uses synthetic Promptfoo fixtures and makes no paid model calls; a GitHub Release alone
-does not prove that the PyPI upload completed.
+Existing version tags are never overwritten. CI uses synthetic Promptfoo fixtures and makes no paid
+model calls. A GitHub Release is not evidence that the package has been published on PyPI.
