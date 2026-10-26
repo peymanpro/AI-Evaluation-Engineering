@@ -10,18 +10,18 @@ RELEASE_WORKFLOW = (ROOT / ".github" / "workflows" / "release.yml").read_text(
 )
 
 
-def test_pypi_publishing_is_disabled_for_push_and_tag_events() -> None:
-    """Only an explicit workflow-dispatch opt-in may upload to PyPI."""
+def test_pypi_publishing_is_automatic_only_for_main_push_or_manual_opt_in() -> None:
+    """Main-branch pushes publish versions; tag pushes alone do not."""
     publish_job = RELEASE_WORKFLOW.split("  publish-pypi:", maxsplit=1)[1]
 
+    assert "github.event_name == 'push'" in publish_job
+    assert "github.ref == 'refs/heads/main'" in publish_job
     assert "github.event_name == 'workflow_dispatch'" in publish_job
     assert "inputs.publish_pypi == true" in publish_job
-    assert "github.event_name == 'push'" not in publish_job
-    assert "github.ref == 'refs/heads/main'" not in publish_job
 
 
 def test_pypi_opt_in_defaults_to_false() -> None:
-    """Running the release workflow manually must not publish unless opted in."""
+    """A manual workflow run must not publish unless explicitly opted in."""
     input_section = RELEASE_WORKFLOW.split("      publish_pypi:", maxsplit=1)[1].split(
         "\n\npermissions:", maxsplit=1
     )[0]
