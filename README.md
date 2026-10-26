@@ -146,9 +146,9 @@ the synchronous judge. No API call is made until `await grader.grade(...)` or an
 ```python
 from ai_eval_engineering import AsyncOpenAICompatibleJudge, AsyncOpenAIJudgeGrader
 
+# The OpenAI SDK reads OPENAI_API_KEY from the environment by default.
 judge = AsyncOpenAICompatibleJudge(
     model="your-model",
-    api_key="YOUR_API_KEY",
     timeout=30.0,
     max_retries=2,
 )
