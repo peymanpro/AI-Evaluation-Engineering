@@ -10,7 +10,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from .budget import (
     BudgetedRunResult,
@@ -371,7 +371,7 @@ class EvaluationRunner:
                     )
                     break
                 try:
-                    budget_grade = getattr(grader, "grade_with_budget")
+                    budget_grade = cast(BudgetedGrader, grader).grade_with_budget
                     grader_result = budget_grade(
                         case, output, max_cost_usd=remaining_case_budget
                     )
