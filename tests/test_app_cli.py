@@ -14,6 +14,11 @@ from ai_eval_engineering.domain import (
     SystemOutput,
 )
 from ai_eval_engineering.result_import import write_run_json
+from ai_eval_engineering.release_gate import ReleaseMetricPolicy
+from ai_eval_engineering.release_policy import (
+    ReleasePolicy,
+    write_release_policy_json,
+)
 from ai_eval_engineering.runner import build_run_metadata
 from ai_eval_engineering.suite_io import write_suite_json
 
@@ -63,6 +68,13 @@ def test_schema_command_prints_packaged_external_run_schema(capsys) -> None:
     assert main(["schema"]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["properties"]["schema_version"]["const"] == 1
+
+
+def test_release_policy_schema_command_prints_packaged_schema(capsys) -> None:
+    assert main(["release-policy-schema"]) == 0
+    schema = json.loads(capsys.readouterr().out)
+    assert schema["properties"]["schema_version"]["const"] == 1
+    assert schema["$defs"]["policy"]["properties"]["metrics"]["minItems"] == 1
 
 
 def test_validate_run_command_prints_manifest_summary(tmp_path: Path, capsys) -> None:
@@ -138,6 +150,140 @@ def test_compare_command_returns_zero_for_passing_candidate(
     output = json.loads(capsys.readouterr().out)
     assert code == 0
     assert output["status"] == "PASS"
+
+
+def make_multi_metric_run(
+    system_version: str,
+    quality_score: float,
+    latency_score: float,
+) -> EvaluationRun:
+    run = make_run(system_version, quality_score)
+    cases = tuple(
+        replace(
+            item,
+            graders=(
+                *item.graders,
+                GraderResult(
+                    grader="latency_ms",
+                    passed=True,
+                    score=latency_score,
+                    details="recorded deterministic latency metric",
+                ),
+            ),
+        )
+        for item in run.cases
+    )
+    return replace(run, cases=cases)
+
+
+def test_compare_command_reads_policy_file_and_gates_multiple_metrics(
+    tmp_path: Path, capsys
+) -> None:
+    baseline = tmp_path / "baseline.json"
+    candidate = tmp_path / "candidate.json"
+    policy_path = tmp_path / "release-policy.json"
+    write_run_json(make_multi_metric_run("revision-1", 0.9, 200.0), baseline)
+    write_run_json(make_multi_metric_run("revision-2", 0.9, 150.0), candidate)
+    write_release_policy_json(
+        ReleasePolicy(
+            name="quality-and-latency",
+            metrics=(
+                ReleaseMetricPolicy("quality", min_cases=2),
+                ReleaseMetricPolicy(
+                    "latency_ms",
+                    direction="lower_is_better",
+                    max_allowed_regression=5.0,
+                    min_cases=2,
+                ),
+            ),
+            confidence=0.95,
+            resamples=500,
+            seed=13,
+        ),
+        policy_path,
+    )
+
+    code = main(
+        [
+            "compare",
+            str(baseline),
+            str(candidate),
+            "--policy",
+            str(policy_path),
+        ]
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert output["status"] == "PASS"
+    assert [metric["metric"] for metric in output["metrics"]] == [
+        "quality",
+        "latency_ms",
+    ]
+    assert output["policy"] == {
+        "name": "quality-and-latency",
+        "schema_version": 1,
+    }
+    assert output["confidence_level"] == 0.95
+    assert all(metric["sample_size"] == 3 for metric in output["metrics"])
+
+
+def test_compare_policy_mode_rejects_cli_overrides(tmp_path: Path, capsys) -> None:
+    baseline = tmp_path / "baseline.json"
+    candidate = tmp_path / "candidate.json"
+    policy_path = tmp_path / "policy.json"
+    write_run_json(make_run("revision-1", 0.9), baseline)
+    write_run_json(make_run("revision-2", 0.9), candidate)
+    write_release_policy_json(
+        ReleasePolicy(
+            name="quality",
+            metrics=(ReleaseMetricPolicy("quality", min_cases=2),),
+            resamples=500,
+        ),
+        policy_path,
+    )
+
+    code = main(
+        [
+            "compare",
+            str(baseline),
+            str(candidate),
+            "--policy",
+            str(policy_path),
+            "--min-cases",
+            "2",
+        ]
+    )
+
+    assert code == 2
+    assert "--min-cases" in capsys.readouterr().err
+
+
+def test_compare_policy_mode_returns_two_for_invalid_policy_file(
+    tmp_path: Path, capsys
+) -> None:
+    baseline = tmp_path / "baseline.json"
+    candidate = tmp_path / "candidate.json"
+    policy_path = tmp_path / "invalid-policy.json"
+    write_run_json(make_run("revision-1", 0.9), baseline)
+    write_run_json(make_run("revision-2", 0.9), candidate)
+    policy_path.write_text(
+        '{"schema_version": 1, "policy": {"name": "broken"}}',
+        encoding="utf-8",
+    )
+
+    code = main(
+        [
+            "compare",
+            str(baseline),
+            str(candidate),
+            "--policy",
+            str(policy_path),
+        ]
+    )
+
+    assert code == 2
+    assert "missing required fields" in capsys.readouterr().err
 
 
 def test_compare_command_returns_nonzero_for_regression(
