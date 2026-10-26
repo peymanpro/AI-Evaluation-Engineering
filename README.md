@@ -8,7 +8,7 @@ This repository treats evaluation as an engineering discipline rather than a fin
 
 - typed evaluation cases, suites, run manifests, outputs, and grader results;
 - versioned JSON suite files with strict import/export validation, reusable datasets, and a packaged schema;
-- reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters;
+- reusable synchronous and bounded-concurrency asynchronous evaluation runners with provider-neutral system adapters and opt-in transient-failure retries;
 - preflight validation for unique case IDs, JSON-compatible evidence, matching suite manifests, outputs, and grader results;
 - atomic, resumable checkpoints for synchronous and asynchronous runs, with suite and run-identity validation;
 - post-run budget assessments for recorded cost, token usage, and per-case latency;
@@ -61,6 +61,7 @@ The framework preserves raw case-level observations so aggregate claims can be i
     python examples/promptfoo_release_workflow.py
     python examples/async_evaluation.py
     python examples/deterministic_graders.py
+    python examples/retry_policy.py
 
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
@@ -280,6 +281,60 @@ its provider request. Choose the limits with your rate limits and latency budget
 use a fake async client and make no live model calls; calibration against representative
 human-labelled examples is still required.
 
+
+## Transient adapter retries
+
+Retries are opt-in. Pass a `RetryPolicy` to either runner to retry only configured exception
+classes from the system adapter, using bounded exponential backoff. Without a policy, the runner
+makes exactly one adapter attempt as before.
+
+```python
+from ai_eval_engineering import RetryPolicy
+from ai_eval_engineering.runner import build_run_metadata
+
+events = []
+policy = RetryPolicy(
+    max_attempts=3,  # includes the first request
+    retryable_exceptions=(TimeoutError, ConnectionError),
+    initial_delay_seconds=0.25,
+    backoff_factor=2,
+    max_delay_seconds=2,
+    on_retry=events.append,
+)
+
+manifest = build_run_metadata(
+    suite,
+    "support-assistant",
+    "git:abc123",
+    retry_policy=policy,  # record the exact retry configuration with the run
+)
+runner = EvaluationRunner(
+    system_adapter,
+    graders,
+    retry_policy=policy,
+)
+run = runner.run(suite, manifest)
+```
+
+The policy defaults to retrying built-in `TimeoutError` and `ConnectionError` only when it has
+been explicitly enabled. Add the exception types used by your HTTP/provider client to
+`retryable_exceptions` when appropriate; the library does not retry arbitrary exceptions by
+default. `max_attempts` counts the initial call, not just the retries. The optional callback
+receives a `RetryEvent` with the case ID, failed/next attempt numbers, exception type, and delay;
+raw exception messages are deliberately not copied into that event. If the callback itself fails,
+the run fails rather than silently dropping an observability hook.
+
+Retry wrapping is limited to the system-adapter call. Graders and output/manifest validation are
+never retried. In the async runner, the configured timeout applies to each adapter attempt; the
+backoff delay is outside that per-attempt deadline. The retry settings are included in the run
+manifest configuration, and the runner rejects a manifest whose recorded policy does not match the
+actual policy. This matters when resuming from a checkpoint.
+
+A transport error or timeout can happen after a provider has processed and billed a request. Retrying
+may duplicate work, spend, or side effects, so use provider-supported idempotency keys when available
+and set retryable exceptions deliberately. This is not a rate limiter, circuit breaker, or hard
+spend limiter. The [retry demo](examples/retry_policy.py) exercises synchronous and asynchronous
+runners without network calls.
 
 ## Resumable evaluation runs
 
