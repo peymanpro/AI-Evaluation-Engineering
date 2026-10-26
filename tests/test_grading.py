@@ -132,3 +132,35 @@ def test_regex_grader_can_use_a_precompiled_configured_pattern() -> None:
 def test_regex_grader_rejects_invalid_configured_pattern_at_construction() -> None:
     with pytest.raises(ValueError, match="valid regular-expression"):
         RegexGrader(pattern="[")
+
+
+
+def test_empty_expected_substring_fails_instead_of_matching_every_output() -> None:
+    result = ContainsGrader().grade(
+        EvaluationCase("empty-substring", {}, expected=""),
+        SystemOutput("empty-substring", "any response"),
+    )
+
+    assert not result.passed
+    assert "must not be empty" in result.details
+
+
+def test_empty_case_regex_fails_instead_of_matching_every_output() -> None:
+    result = RegexGrader().grade(
+        EvaluationCase("empty-regex", {}, expected=""),
+        SystemOutput("empty-regex", "any response"),
+    )
+
+    assert not result.passed
+    assert "must not be empty" in result.details
+
+
+def test_numeric_tolerance_rejects_overflow_without_emitting_non_finite_metadata() -> None:
+    result = NumericToleranceGrader(rel_tol=1e308).grade(
+        EvaluationCase("numeric-overflow", {}, expected=1e308),
+        SystemOutput("numeric-overflow", 1e308),
+    )
+
+    assert not result.passed
+    assert "finite numeric range" in result.details
+    assert result.metadata == {}
