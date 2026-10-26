@@ -459,6 +459,8 @@ print(result.status)
 print(result.known_cost_usd)
 print(result.reserved_cost_usd)
 print(result.pending_case_ids)
+print(result.incomplete_case_ids)
+print(result.not_started_case_ids)
 ```
 
 This strict mode requires the system adapter to implement
@@ -471,12 +473,17 @@ sending it. A billable grader must similarly implement
 `budget_cost_free = True`; custom graders may use that marker only when they truly make no billable
 calls. Strict mode rejects an unbounded component before any case starts and disables retries.
 
-The run reserves each case's maximum before starting it, including all grader calls. The asynchronous
-runner reserves every case in a batch before launching any of them; the known spend plus outstanding
-reservations therefore stays within the configured total **provided every budget-aware component honors
-its per-call ceiling**. If a component reports charges above its allowance, the result is
+The run reserves up to the configured per-case ceiling before starting each case, including the cost
+envelope shared by all graders. The asynchronous runner reserves every case in a batch before launching
+any of them; known spend plus outstanding reservations therefore stays within the configured total
+**provided every budget-aware component honors its per-call ceiling**. If the global remainder is below
+the per-case ceiling, the last reservation is smaller, and the adapter/grader must refuse any call that
+cannot fit. If a component reports charges above its allowance, the result is
 `REQUEST_CAP_VIOLATED`; already incurred charges cannot be undone. If a component returns no cost
-measurement, its remaining reservation is retained and no new cases are admitted.
+measurement, its remaining reservation is retained and no new cases are admitted. `pending_case_ids`
+lists all cases without a complete `CaseResult`; `incomplete_case_ids` identifies cases whose request
+execution started but whose full system-plus-grader result did not complete, while
+`not_started_case_ids` identifies cases that never reached a billable request.
 
 This contract cannot force an arbitrary adapter or external billing platform to obey a ceiling. For an
 actual provider, the adapter must translate the allowance into enforceable request constraints or refuse
