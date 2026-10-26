@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -33,6 +35,169 @@ class ExactMatchGrader:
             score=1.0 if passed else 0.0,
             details="exact match" if passed else f"expected {expected!r}, got {actual!r}",
         )
+
+
+class ContainsGrader:
+    """Check whether a string output contains the case's expected substring."""
+
+    def __init__(self, name: str = "contains", case_sensitive: bool = False) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        if not isinstance(case_sensitive, bool):
+            raise TypeError("case_sensitive must be a boolean.")
+        self.name = name
+        self.case_sensitive = case_sensitive
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        expected = case.expected
+        actual = output.output
+        if not isinstance(expected, str) or not isinstance(actual, str):
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="contains grader requires string expected and actual values",
+            )
+        left, right = (actual, expected) if self.case_sensitive else (
+            actual.casefold(),
+            expected.casefold(),
+        )
+        passed = right in left
+        return GraderResult(
+            grader=self.name,
+            passed=passed,
+            score=1.0 if passed else 0.0,
+            details="expected substring found" if passed else "expected substring not found",
+        )
+
+
+class RegexGrader:
+    """Match string output against the case's expected regular-expression pattern.
+
+    Patterns come from the evaluation case's expected value. Only use trusted
+    patterns: Python's regular-expression engine does not impose a time limit.
+    """
+
+    def __init__(
+        self,
+        name: str = "regex",
+        *,
+        full_match: bool = False,
+        case_sensitive: bool = True,
+    ) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        if not isinstance(full_match, bool):
+            raise TypeError("full_match must be a boolean.")
+        if not isinstance(case_sensitive, bool):
+            raise TypeError("case_sensitive must be a boolean.")
+        self.name = name
+        self.full_match = full_match
+        self.case_sensitive = case_sensitive
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        pattern = case.expected
+        actual = output.output
+        if not isinstance(pattern, str) or not isinstance(actual, str):
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="regex grader requires string pattern and actual values",
+            )
+        try:
+            compiled = re.compile(pattern, 0 if self.case_sensitive else re.IGNORECASE)
+        except re.error:
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="case expected value is not a valid regular-expression pattern",
+            )
+        matched = (
+            compiled.fullmatch(actual) is not None
+            if self.full_match
+            else compiled.search(actual) is not None
+        )
+        return GraderResult(
+            grader=self.name,
+            passed=matched,
+            score=1.0 if matched else 0.0,
+            details="regular expression matched" if matched else "regular expression did not match",
+        )
+
+
+class NumericToleranceGrader:
+    """Compare numeric output with the expected value using absolute/relative tolerance.
+
+    A result passes when abs(actual - expected) <= abs_tol + rel_tol * abs(expected).
+    Scores are binary so the class does not imply a domain-specific error scale.
+    """
+
+    def __init__(
+        self,
+        name: str = "numeric_tolerance",
+        *,
+        abs_tol: float = 0.0,
+        rel_tol: float = 0.0,
+    ) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must not be empty.")
+        self.name = name
+        self.abs_tol = _validate_tolerance(abs_tol, "abs_tol")
+        self.rel_tol = _validate_tolerance(rel_tol, "rel_tol")
+
+    def grade(self, case: EvaluationCase, output: SystemOutput) -> GraderResult:
+        expected = _finite_numeric(case.expected)
+        actual = _finite_numeric(output.output)
+        if expected is None or actual is None:
+            return GraderResult(
+                grader=self.name,
+                passed=False,
+                score=0.0,
+                details="numeric tolerance grader requires finite numeric expected and actual values",
+            )
+        difference = abs(actual - expected)
+        allowed_error = self.abs_tol + self.rel_tol * abs(expected)
+        passed = difference <= allowed_error
+        return GraderResult(
+            grader=self.name,
+            passed=passed,
+            score=1.0 if passed else 0.0,
+            details=(
+                f"absolute error {difference:.8g} is within tolerance {allowed_error:.8g}"
+                if passed
+                else f"absolute error {difference:.8g} exceeds tolerance {allowed_error:.8g}"
+            ),
+            metadata={
+                "expected": expected,
+                "actual": actual,
+                "absolute_error": difference,
+                "allowed_error": allowed_error,
+            },
+        )
+
+
+def _validate_tolerance(value: float, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be numeric.")
+    try:
+        numeric = float(value)
+    except OverflowError as exc:
+        raise ValueError(f"{name} must be finite and non-negative.") from exc
+    if not math.isfinite(numeric) or numeric < 0:
+        raise ValueError(f"{name} must be finite and non-negative.")
+    return numeric
+
+
+def _finite_numeric(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        numeric = float(value)
+    except OverflowError:
+        return None
+    return numeric if math.isfinite(numeric) else None
 
 
 class SchemaGrader:
