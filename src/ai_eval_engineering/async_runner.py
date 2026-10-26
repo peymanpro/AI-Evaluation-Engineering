@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from typing import Protocol, cast
 
 from .domain import (
@@ -40,6 +41,7 @@ class AsyncEvaluationRunner:
         graders: list[Grader],
         *,
         max_concurrency: int = 8,
+        timeout_per_case_seconds: float | None = None,
     ) -> None:
         if not graders:
             raise ValueError("At least one grader is required.")
@@ -47,9 +49,22 @@ class AsyncEvaluationRunner:
             raise TypeError("max_concurrency must be an integer.")
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be at least 1.")
+        if timeout_per_case_seconds is not None:
+            if isinstance(timeout_per_case_seconds, bool) or not isinstance(
+                timeout_per_case_seconds, (int, float)
+            ):
+                raise TypeError("timeout_per_case_seconds must be numeric or None.")
+            try:
+                timeout_value = float(timeout_per_case_seconds)
+            except OverflowError as exc:
+                raise ValueError("timeout_per_case_seconds must be finite and positive.") from exc
+            if not math.isfinite(timeout_value) or timeout_value <= 0:
+                raise ValueError("timeout_per_case_seconds must be finite and positive.")
+            timeout_per_case_seconds = timeout_value
         self._adapter = adapter
         self._graders = tuple(graders)
         self._max_concurrency = max_concurrency
+        self._timeout_per_case_seconds = timeout_per_case_seconds
 
     async def run(self, suite: EvaluationSuite, manifest: RunMetadata) -> EvaluationRun:
         """Run an evaluation suite through an async adapter.
@@ -70,7 +85,20 @@ class AsyncEvaluationRunner:
                 except StopIteration:
                     return
 
-                output = await self._adapter.run(case)
+                if self._timeout_per_case_seconds is None:
+                    output = await self._adapter.run(case)
+                else:
+                    timeout_scope = asyncio.timeout(self._timeout_per_case_seconds)
+                    try:
+                        async with timeout_scope:
+                            output = await self._adapter.run(case)
+                    except TimeoutError as exc:
+                        if timeout_scope.expired():
+                            raise TimeoutError(
+                                f"System adapter timed out for case {case.id!r} after "
+                                f"{self._timeout_per_case_seconds:g} seconds."
+                            ) from exc
+                        raise
                 if not isinstance(output, SystemOutput):
                     raise TypeError(
                         f"System adapter must return SystemOutput for case {case.id!r}."
