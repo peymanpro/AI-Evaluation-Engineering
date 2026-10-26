@@ -60,6 +60,38 @@ The framework preserves raw case-level observations so aggregate claims can be i
 Generated `artifacts/` output is ignored by Git. The Promptfoo workflow demo uses committed,
 synthetic fixtures and makes no external model calls.
 
+## Command-line interface
+
+The `ai-eval` command works with saved external-run-v1 JSON files and makes no provider calls.
+It complements `ai-eval-demo`, which remains a deterministic example that generates a demo report.
+
+```bash
+# Inspect the available commands and print the packaged JSON Schema
+ai-eval --help
+ai-eval schema > external-run-v1.schema.json
+
+# Validate a recorded run file
+ai-eval validate-run run.json
+
+# Compare a baseline and candidate using the grader's numeric score
+ai-eval compare baseline.json candidate.json \
+  --metric quality \
+  --direction higher_is_better \
+  --max-allowed-regression 0.02 \
+  --min-cases 30
+
+# Enforce recorded cost, token, and latency limits in CI
+ai-eval budget candidate.json \
+  --max-total-cost-usd 2.50 \
+  --max-total-tokens 50000 \
+  --max-case-latency-ms 15000
+```
+
+`compare` and `budget` print machine-readable JSON and return exit code `0` only for a passing
+gate. A failed, inconclusive, or incomplete budget assessment returns `1`; invalid input or
+configuration returns `2`. The CLI uses the same Python APIs and versioned interchange schema as
+the library.
+
 ## Input contract validation
 
 Both runners validate the suite and run manifest before making system calls. They reject duplicate
