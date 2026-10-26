@@ -174,8 +174,13 @@ def validate_execution_report(report: EvaluationExecutionReport) -> None:
     """Validate the report before it is persisted or converted to an EvaluationRun."""
     if not isinstance(report, EvaluationExecutionReport):
         raise TypeError("report must be an EvaluationExecutionReport.")
+    if not isinstance(report.manifest, RunMetadata):
+        raise TypeError("report.manifest must be RunMetadata.")
     if not isinstance(report.cases, tuple):
         raise TypeError("report.cases must be a tuple.")
+    for index, item in enumerate(report.cases):
+        if not isinstance(item, CaseExecutionResult):
+            raise TypeError(f"cases[{index}] must be a CaseExecutionResult.")
     suite = EvaluationSuite(
         version=report.manifest.suite_version,
         cases=tuple(item.case for item in report.cases),
@@ -471,7 +476,11 @@ def _parse_grader(data: dict[str, Any], location: str) -> GraderResult:
     score = data["score"]
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         raise TypeError(f"{location}.score must be numeric.")
-    if not math.isfinite(float(score)):
+    try:
+        numeric_score = float(score)
+    except OverflowError as exc:
+        raise ValueError(f"{location}.score must be finite.") from exc
+    if not math.isfinite(numeric_score):
         raise ValueError(f"{location}.score must be finite.")
     details = data["details"]
     if not isinstance(details, str):
@@ -480,7 +489,7 @@ def _parse_grader(data: dict[str, Any], location: str) -> GraderResult:
     return GraderResult(
         grader=_require_non_empty_string(data["grader"], f"{location}.grader"),
         passed=passed,
-        score=float(score),
+        score=numeric_score,
         details=details,
         metadata=metadata,
     )
@@ -571,7 +580,10 @@ def _optional_nonnegative_number(value: Any, location: str) -> float | None:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{location} must be numeric or null.")
-    numeric = float(value)
+    try:
+        numeric = float(value)
+    except OverflowError as exc:
+        raise ValueError(f"{location} must be finite and non-negative.") from exc
     if not math.isfinite(numeric) or numeric < 0:
         raise ValueError(f"{location} must be finite and non-negative.")
     return numeric
