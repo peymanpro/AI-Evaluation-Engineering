@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from .domain import CaseResult, EvaluationCase, EvaluationRun, GraderResult, SystemOutput
+from .domain import CaseResult, EvaluationCase, EvaluationRun, GraderResult, RunMetadata, SystemOutput
 
 BudgetStatus = Literal[
     "WITHIN_BUDGET",
