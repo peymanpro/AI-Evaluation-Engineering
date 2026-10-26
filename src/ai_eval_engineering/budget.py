@@ -1,10 +1,10 @@
-"""Post-run cost, token, and latency budget assessment."""
+"""Observed and reservation-based budget controls for AI evaluation runs."""
 
 from __future__ import annotations
 
 import math
-from decimal import Decimal
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Literal
 
 from .domain import (
