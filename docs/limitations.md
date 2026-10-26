@@ -7,7 +7,8 @@
 - Contract-snapshot integrations verify adapter compatibility and evaluation semantics; they do not execute the sibling applications inside this CI job.
 - Quality/cost/latency frontiers expose trade-offs without automatically selecting a preferred system.
 - Run budget assessment checks recorded cost, token usage, and latency after execution. It is not a live spend limiter, does not estimate monetary cost from tokens, and cannot infer missing measurements.
-- The async runner bounds asynchronous system calls and can apply a per-case adapter deadline, but it does not retry failed requests, persist partial runs, or make synchronous graders non-blocking. A timeout fails the whole run after cancelling pending workers; retry rules and idempotency remain provider/application responsibilities.
+- Both runners fail the current run when a case fails; when an explicit checkpoint path is configured, successful earlier cases are atomically retained and can be resumed. Checkpoints are not encrypted, are not a secure vault, and do not support concurrent writers to the same path. Case inputs, expected values, outputs, traces, and grader details may be sensitive.
+- The async runner bounds asynchronous system calls and can apply a per-case adapter deadline, but it does not retry failed requests automatically or make synchronous graders non-blocking. A timeout fails the whole run after cancelling pending workers; retry rules and idempotency remain provider/application responsibilities.
 - Runner contract validation verifies structure and finite JSON-compatible values; it cannot determine whether expected answers are correct, a grader is valid, a system version is truthful, or model output is factually correct.
 - Online experimentation, cloud-provider integrations, and production analytics adapters remain outside the V1.1 boundary.
 

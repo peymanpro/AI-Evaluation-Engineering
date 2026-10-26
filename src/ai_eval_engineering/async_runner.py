@@ -6,8 +6,10 @@ import asyncio
 import inspect
 import math
 from collections.abc import Awaitable
+from pathlib import Path
 from typing import Protocol, cast
 
+from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
     CaseResult,
@@ -77,16 +79,35 @@ class AsyncEvaluationRunner:
         self._max_concurrency = max_concurrency
         self._timeout_per_case_seconds = timeout_per_case_seconds
 
-    async def run(self, suite: EvaluationSuite, manifest: RunMetadata) -> EvaluationRun:
-        """Run an evaluation suite through an async adapter.
+    async def run(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        checkpoint_path: str | Path | None = None,
+    ) -> EvaluationRun:
+        """Run an asynchronous evaluation, optionally resuming from a checkpoint.
 
-        The manifest is retained as provided, matching the sync runner's
-        contract. Adapter calls are bounded; grader methods use the existing
-        synchronous `grade(case, output)` interface.
+        Checkpoints are written atomically after each completed case. On resume,
+        the helper validates the suite fingerprint and run identity before any
+        saved result is reused.
         """
         validate_run_inputs(suite, manifest)
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
         results: list[CaseResult | None] = [None] * len(suite.cases)
-        cases = iter(enumerate(suite.cases))
+        for index, case in enumerate(suite.cases):
+            if case.id in completed:
+                results[index] = completed[case.id]
+        cases = iter(
+            (index, case)
+            for index, case in enumerate(suite.cases)
+            if case.id not in completed
+        )
+        checkpoint_lock = asyncio.Lock()
 
         async def worker() -> None:
             while True:
@@ -123,7 +144,14 @@ class AsyncEvaluationRunner:
                     graded_items.append(grader_result)
                 graded = tuple(graded_items)
                 validate_grader_results(graded, case.id)
-                results[index] = CaseResult(case=case, output=output, graders=graded)
+                case_result = CaseResult(case=case, output=output, graders=graded)
+                results[index] = case_result
+                if checkpoint_path is not None:
+                    async with checkpoint_lock:
+                        completed[case.id] = case_result
+                        save_run_checkpoint(
+                            checkpoint_path, suite, run_manifest, completed
+                        )
 
         workers = [
             asyncio.create_task(worker())
@@ -141,6 +169,6 @@ class AsyncEvaluationRunner:
             raise RuntimeError("Async evaluation finished without producing every case result.")
 
         return EvaluationRun(
-            manifest=manifest,
+            manifest=run_manifest,
             cases=tuple(cast(CaseResult, result) for result in results),
         )

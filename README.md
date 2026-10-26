@@ -173,6 +173,44 @@ use a fake async client and make no live model calls; calibration against repres
 human-labelled examples is still required.
 
 
+## Resumable evaluation runs
+
+Pass `checkpoint_path` to either runner to atomically persist each completed case and resume after
+a later case fails. On resume, the runner verifies the complete suite fingerprint and the system,
+version, configuration, seed, and environment recorded in the manifest. Completed cases are reused;
+only unfinished cases execute again.
+
+```python
+runner = EvaluationRunner(async_or_sync_system, graders)
+run = runner.run(
+    suite,
+    manifest,
+    checkpoint_path=".local-runs/support-assistant.checkpoint.json",
+)
+```
+
+For an async adapter, the call is awaited in the normal way:
+
+```python
+run = await AsyncEvaluationRunner(
+    async_system,
+    graders,
+    max_concurrency=8,
+    timeout_per_case_seconds=30.0,
+).run(suite, manifest, checkpoint_path=".local-runs/support-assistant.checkpoint.json")
+```
+
+If a case raises, the run still raises instead of presenting partial evidence as complete, while the
+checkpoint retains earlier successful cases. Re-running with the same suite, manifest identity, and
+path resumes the unfinished cases. A completed checkpoint is also reused; choose a new path or
+remove the old checkpoint to start a fresh evaluation. Incompatible or malformed checkpoints raise
+`CheckpointError` and are never silently discarded.
+
+Checkpoints contain the run manifest, case inputs, expected values, outputs, traces, and grader
+details. They are written atomically but are not encrypted and are not designed for multiple
+processes to write concurrently to the same path. Keep them out of source control and protect them
+according to the sensitivity of the evaluated data.
+
 ## Run budget assessment
 
 `RunBudgetPolicy` evaluates measured cost, token usage, and per-case latency against explicit

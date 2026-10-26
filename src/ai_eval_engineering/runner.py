@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from .checkpoint import load_run_checkpoint, save_run_checkpoint
 from .contracts import validate_grader_results, validate_run_inputs, validate_system_output
 from .domain import (
     CaseResult,
@@ -65,16 +66,44 @@ class EvaluationRunner:
         self._adapter = adapter
         self._graders = graders
 
-    def run(self, suite: EvaluationSuite, manifest: RunMetadata) -> EvaluationRun:
+    def run(
+        self,
+        suite: EvaluationSuite,
+        manifest: RunMetadata,
+        *,
+        checkpoint_path: str | Path | None = None,
+    ) -> EvaluationRun:
+        """Run the suite, optionally saving each completed case for later resume.
+
+        When a checkpoint path is supplied, completed cases are written atomically
+        after grading. A subsequent invocation validates the suite fingerprint,
+        system identity, configuration, and environment before reusing those cases.
+        """
         validate_run_inputs(suite, manifest)
-        results: list[CaseResult] = []
+        run_manifest = manifest
+        completed: dict[str, CaseResult] = {}
+        if checkpoint_path is not None:
+            run_manifest, completed = load_run_checkpoint(checkpoint_path, suite, manifest)
+
         for case in suite.cases:
+            if case.id in completed:
+                continue
             output = self._adapter.run(case)
             validate_system_output(case, output)
             grader_results = tuple(grader.grade(case, output) for grader in self._graders)
             validate_grader_results(grader_results, case.id)
-            results.append(CaseResult(case=case, output=output, graders=grader_results))
-        return EvaluationRun(manifest=manifest, cases=tuple(results))
+            completed[case.id] = CaseResult(
+                case=case,
+                output=output,
+                graders=grader_results,
+            )
+            if checkpoint_path is not None:
+                save_run_checkpoint(checkpoint_path, suite, run_manifest, completed)
+
+        return EvaluationRun(
+            manifest=run_manifest,
+            cases=tuple(completed[case.id] for case in suite.cases),
+        )
 
 
 def persist_run(run: EvaluationRun, path: str | Path) -> None:
