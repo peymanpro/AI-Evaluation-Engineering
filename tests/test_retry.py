@@ -299,3 +299,26 @@ def test_retry_policy_rejects_invalid_configuration(
 ) -> None:
     with pytest.raises(error, match=message):
         RetryPolicy(**kwargs)
+
+
+
+def test_retry_callback_failure_aborts_instead_of_silently_retrying() -> None:
+    suite = make_suite()
+    adapter = AlwaysFailingSyncAdapter(ConnectionError("transient"))
+
+    def broken_observer(event: RetryEvent) -> None:
+        raise RuntimeError(f"cannot record retry for {event.case_id}")
+
+    policy = RetryPolicy(
+        max_attempts=3,
+        initial_delay_seconds=0,
+        on_retry=broken_observer,
+    )
+    with pytest.raises(RuntimeError, match="cannot record retry"):
+        EvaluationRunner(
+            adapter,
+            [ExactMatchGrader()],
+            retry_policy=policy,
+        ).run(suite, make_manifest(suite, policy))
+
+    assert adapter.calls == 1
